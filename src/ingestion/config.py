@@ -1,7 +1,7 @@
 """Configuration for the Foorilla ingestion module.
 
 All secrets/config come from environment variables (loaded from .env in
-local dev via python-dotenv). Nothing sensitive is hardcoded or committed.
+local dev via python-dotenv).
 """
 from __future__ import annotations
 
@@ -33,10 +33,9 @@ class FoorillaConfig:
     api_key: str = field(default_factory=lambda: _require_env("FOORILLA_API_KEY"))
     base_url: str = field(default_factory=lambda: os.getenv("FOORILLA_BASE_URL", "https://foorilla.com/api/v1"))
     # Foorilla's documented limits: 600 requests/minute AND 5 requests/second.
-    # The per-second cap is the binding constraint (5/sec = 300/min < 600/min),
-    # so that's what we throttle against.
+    # The per-second cap is the binding constraint (5/sec = 300/min < 600/min),.
     requests_per_second: float = float(os.getenv("FOORILLA_RATE_LIMIT_RPS", "5"))
-    page_size: int = int(os.getenv("FOORILLA_PAGE_SIZE", "100"))  # API allows 1-1000
+    page_size: int = int(os.getenv("FOORILLA_PAGE_SIZE", "1000"))  # API allows 1-1000; max reduces round trips
     timeout_seconds: int = int(os.getenv("FOORILLA_TIMEOUT_SECONDS", "30"))
     max_retries: int = int(os.getenv("FOORILLA_MAX_RETRIES", "5"))
 

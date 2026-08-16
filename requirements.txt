@@ -7,5 +7,5 @@ pytest>=8.0
 pytest-mock>=3.14
 responses>=0.25
 
-
+# notebook/EDA only — not needed by the ingestion code itself
 pandas>=2.2
