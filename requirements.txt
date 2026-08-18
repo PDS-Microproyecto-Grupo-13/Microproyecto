@@ -1,11 +1,14 @@
-requests>=2.31
-pydantic>=2.6
-python-dotenv>=1.0
+requests>=2.31,<3
+pydantic>=2.6,<3
+python-dotenv>=1.0,<2
 
 # dev/test only
-pytest>=8.0
-pytest-mock>=3.14
-responses>=0.25
+pytest>=8,<9
+pytest-mock>=3.14,<4
+responses>=0.25,<1
 
-# notebook/EDA only — not needed by the ingestion code itself
-pandas>=2.2
+# notebook/EDA only
+pandas>=2.2,<3
+
+# MLOps
+dvc[s3]==3.67.1
