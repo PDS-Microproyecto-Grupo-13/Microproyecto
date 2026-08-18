@@ -7,11 +7,6 @@ __pycache__/
 .venv/
 *.egg-info/
 
-# Raw data pulls stay out of git — these are handed off to whoever owns
-# data versioning, not committed directly here.
-/data/raw/**
-!/data/raw/.gitkeep
-
 # Notebook checkpoints
 .ipynb_checkpoints/
 
@@ -20,3 +15,4 @@ __pycache__/
 
 # ABC Notebooks
 notebooks/abc/**
+.DS_Store
