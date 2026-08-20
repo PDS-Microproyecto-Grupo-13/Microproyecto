@@ -30,3 +30,11 @@ If you are developing a production application, we recommend enabling type-aware
 ```
 
 See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+
+## Comandos de Verificación Ejecutados
+
+```bash
+npm run build
+npm run lint
+npm run dev
+```
