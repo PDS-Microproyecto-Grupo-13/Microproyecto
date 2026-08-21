@@ -2,7 +2,7 @@
 
 Proyecto académico para analizar vacantes de datos, inteligencia artificial y *machine learning* y, en fases posteriores, estimar rangos salariales anuales en USD según las características de una vacante.
 
-> **Estado:** Entrega 1 — definición del problema, ingesta y versionamiento de datos, exploración inicial y maqueta del prototipo. El modelo predictivo, la API y el tablero funcional todavía no están implementados.
+> **Estado:** Entrega 1 — definición del problema, ingesta y versionamiento de datos, exploración inicial, maqueta del prototipo y esqueletos base de frontend y backend. El modelo predictivo, los endpoints de predicción y el tablero conectado a datos reales todavía no están implementados.
 
 ## Problema y pregunta de negocio
 
@@ -30,14 +30,15 @@ Esta entrega cubre:
 - Versionamiento de los datos mediante DVC y un remoto S3.
 - Exploración, limpieza y análisis descriptivo de los datos.
 - Maqueta de seis vistas para el futuro tablero.
+- Esqueletos técnicos del frontend en React/Vite y del backend en FastAPI.
 - Pruebas unitarias del cliente y del esquema de ingesta.
 
-No forman parte de esta versión:
+Aunque existen sus estructuras iniciales, aún no están implementados funcionalmente:
 
 - Entrenamiento y selección del modelo.
 - Seguimiento de experimentos y versionamiento de modelos.
-- API de predicción.
-- Tablero funcional.
+- Endpoints de predicción en el backend.
+- Integración del frontend con datos y predicciones reales.
 - Despliegue, integración continua y monitoreo.
 
 ## Datos
@@ -92,7 +93,11 @@ flowchart LR
 ```text
 Microproyecto/
 ├── .dvc/                    # Configuración de DVC y remoto S3
+├── backend/                 # Base FastAPI, endpoint de salud y pruebas
 ├── data/raw/foorilla.dvc    # Puntero DVC a los archivos de datos
+├── frontend/                # Base React/Vite con las vistas del mockup
+├── ml/                      # Espacio reservado para el modelo
+├── mlflow/                  # Espacio reservado para tracking de experimentos
 ├── notebooks/
 │   └── 01_eda_ingested_data.ipynb
 ├── src/ingestion/
@@ -106,6 +111,8 @@ Microproyecto/
 ├── requirements.txt         # Dependencias directas
 └── requirements.lock.txt    # Entorno reproducible con versiones fijadas
 ```
+
+El frontend y el backend son bases de desarrollo incorporadas al repositorio; su presencia no implica que el modelo o el flujo de predicción estén terminados. Cada componente tiene instrucciones adicionales en [backend/README.md](backend/README.md) y [frontend/README.md](frontend/README.md). Las carpetas `ml/` y `mlflow/` son marcadores para fases posteriores.
 
 ## Preparación del entorno
 
