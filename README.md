@@ -1,4 +1,4 @@
-# SalaryPredict — Microproyecto PDS 2026-14
+# PREDICCIÓN DE RANGO DE SALARIOS POSICIONES DATOS, IA Y MACHINE LEARNING — Microproyecto PDS 2026-14
 
 Proyecto académico para analizar vacantes de datos, inteligencia artificial y *machine learning* y, en fases posteriores, estimar rangos salariales anuales en USD según las características de una vacante.
 
