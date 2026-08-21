@@ -11,4 +11,6 @@ responses>=0.25,<1
 pandas>=2.2,<3
 
 # MLOps
-dvc[s3]==3.67.1
+dvc[s3,gdrive]==3.67.1
+pyopenssl==24.2.1
+cryptography==43.0.3
