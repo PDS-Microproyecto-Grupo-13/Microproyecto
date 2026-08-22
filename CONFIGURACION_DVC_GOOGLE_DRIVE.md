@@ -22,18 +22,27 @@ pip install "dvc[gdrive]"
 ```
 
 
-## 3. Confirmar que el remoto ya está configurado
+### 3. Configurar el acceso al remoto (Google Drive)
 
-El archivo `.dvc/config` ya viene versionado en el repo, así que al hacer `git pull` deberían tener el remoto de Google Drive configurado automáticamente. Pueden confirmarlo con:
+La ruta hacia el almacenamiento de datos ya viene versionada en el repositorio. Al hacer `git pull`, tendrás el remoto apuntado automáticamente. Puedes verificarlo con:
 
 ```bash
+dvc remote default gdrive-remote
 dvc remote list
+
 ```
 
-Debería ver algo como:
+*(Deberías ver: `gdrive-remote   gdrive://<ID_DE_CARPETA>`)*
+
+Por seguridad, las credenciales de acceso no se suben a Git. Para poder descargar (`pull`) o subir (`push`) datos, debes configurar las claves proporcionadas por el equipo de forma local. Ejecuta los siguientes comandos en tu terminal:
+
+```bash
+dvc remote modify --local gdrive-remote gdrive_client_id "TU_CLIENT_ID"
+dvc remote modify --local gdrive-remote gdrive_client_secret "TU_CLIENT_SECRET"
+
 ```
-gdrive-remote   gdrive://<ID_DE_CARPETA>      (default)
-```
+
+Esto guardará las llaves en un archivo oculto (`.dvc/config.local`) que está excluido del control de versiones, garantizando que el acceso se mantenga seguro y privado en tu computadora.
 
 ## 4. Estar configurado como "test user" en Google Cloud
 

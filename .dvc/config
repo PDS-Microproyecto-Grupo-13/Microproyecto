@@ -4,5 +4,3 @@
     url = s3://amzn-s3-mlops-foorilla
 ['remote "gdrive-remote"']
     url = gdrive://1CNmcTbMiSGg3tfZ0HXeoK9a6lJsvO8vz
-    gdrive_client_id = 456877122702-e0i9gvbbnalne7147cbd6peu5g67obcl.apps.googleusercontent.com
-    gdrive_client_secret = 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
