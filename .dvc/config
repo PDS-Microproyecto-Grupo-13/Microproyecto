@@ -1,4 +1,6 @@
 [core]
-    remote = aws-remote
+    remote = gdrive-remote
 ['remote "aws-remote"']
     url = s3://amzn-s3-mlops-foorilla
+['remote "gdrive-remote"']
+    url = gdrive://1CNmcTbMiSGg3tfZ0HXeoK9a6lJsvO8vz
