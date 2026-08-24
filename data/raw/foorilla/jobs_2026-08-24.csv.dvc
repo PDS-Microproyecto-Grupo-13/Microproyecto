@@ -1,0 +1,5 @@
+outs:
+- md5: f86bfad34a84d9142947b58f66c25f7c
+  size: 1909773
+  hash: md5
+  path: jobs_2026-08-24.csv
