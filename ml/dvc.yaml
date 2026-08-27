@@ -1,0 +1,58 @@
+stages:
+  collect:
+    cmd: python -m ml_pipeline collect
+    deps:
+      - src/ml_pipeline/data/collect.py
+    outs:
+      - data/raw/dataset.csv
+
+  validate:
+    cmd: python -m ml_pipeline validate
+    deps:
+      - data/raw/dataset.csv
+      - src/ml_pipeline/data/validate.py
+    outs:
+      - data/validated/dataset.csv
+      - artifacts/reports/validation.json:
+          cache: false
+
+  preprocess:
+    cmd: python -m ml_pipeline preprocess
+    deps:
+      - data/validated/dataset.csv
+      - src/ml_pipeline/data/preprocess.py
+    params:
+      - data
+    outs:
+      - data/processed/train.csv
+      - data/processed/test.csv
+
+  train:
+    cmd: python -m ml_pipeline train
+    deps:
+      - data/processed/train.csv
+      - src/ml_pipeline/modeling/train.py
+    params:
+      - model
+    outs:
+      - artifacts/work/model:
+          cache: false
+
+  evaluate:
+    cmd: python -m ml_pipeline evaluate
+    deps:
+      - artifacts/work/model/model.joblib
+      - data/processed/test.csv
+      - src/ml_pipeline/modeling/evaluate.py
+      - src/ml_pipeline/modeling/candidate.py
+      - src/ml_pipeline/tracking/lineage.py
+    params:
+      - evaluation
+    metrics:
+      - artifacts/reports/metrics.json:
+          cache: false
+    outs:
+      - artifacts/reports/candidate.json:
+          cache: false
+      - artifacts/reports/experiment_manifest.json:
+          cache: false
