@@ -16,3 +16,8 @@ __pycache__/
 # ABC Notebooks
 notebooks/abc/**
 
+# Local model experiments
+ml/catboost_baseline/artifacts/
+ml/catboost_baseline/.mlflow/
+mlruns/
+
