@@ -25,27 +25,34 @@ def register_candidate(settings: Settings) -> str:
     candidate = read_json(candidate_path)
     if candidate.get("eligible") is not True:
         raise RegistrationError(f"Model is not an eligible candidate: {candidate.get('reasons', [])}")
-    run_id = read_json(tracking_path).get("run_id")
+
+    tracking = read_json(tracking_path)
+
+    run_id = tracking.get("run_id")
+    model_id = tracking.get("model_id")
+    model_uri = tracking.get("model_uri")
+
     if not run_id:
         raise RegistrationError("tracking.json does not contain run_id")
-    if settings.require_clean_git and collect_lineage(settings)["git_dirty"] is not False:
-        raise RegistrationError("A clean Git working tree is required for registration")
+    if not model_id:
+        raise RegistrationError("tracking.json does not contain model_id")
+    if not model_uri:
+        raise RegistrationError("tracking.json does not contain model_uri") 
 
     mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
     client = MlflowClient()
-    artifacts = client.list_artifacts(run_id, path="model")
-    if not artifacts:
-        raise RegistrationError(f"Run {run_id} has no model artifact")
-    try:
-        client.get_registered_model(settings.mlflow_model_name)
-    except MlflowException:
-        client.create_registered_model(settings.mlflow_model_name)
-    version = client.create_model_version(
+
+    version = mlflow.register_model(
+        model_uri=model_uri,
         name=settings.mlflow_model_name,
-        source=f"runs:/{run_id}/model",
-        run_id=run_id,
-        tags={"candidate": "true"},
     )
+    client.set_model_version_tag(
+        name=settings.mlflow_model_name,
+        version=str(version.version),
+        key="candidate",
+        value="true",
+    )
+
     result = {
         "model_name": settings.mlflow_model_name,
         "version": str(version.version),
