@@ -1,0 +1,38 @@
+data:
+  input_dir: data/raw/foorilla
+  file_pattern: jobs_*.csv
+  experiment: reported
+  train_fraction: 0.70
+  validation_fraction: 0.15
+  outlier_iqr_multiplier: 3.0
+  minimum_segment_size: 100
+
+features:
+  include_company: true
+  target_strategy: minimum_width_log
+
+model:
+  objective: mae
+  metric: mae
+  n_estimators: 500
+  learning_rate: 0.05
+  num_leaves: 127
+  max_depth: 8
+  min_child_samples: 30
+  reg_alpha: 0.0
+  reg_lambda: 5.0
+  subsample: 0.9
+  subsample_freq: 1
+  colsample_bytree: 0.9
+  random_state: 42
+  n_jobs: -1
+  early_stopping_rounds: 50
+  verbose: -1
+
+tracking:
+  enabled: true
+  tracking_uri: sqlite:///ml/lightgbm_baseline/.mlflow/mlflow.db
+  experiment_name: salary-lightgbm-baseline
+
+artifacts:
+  output_dir: ml/lightgbm_baseline/artifacts

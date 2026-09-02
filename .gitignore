@@ -19,5 +19,8 @@ notebooks/abc/**
 # Local model experiments
 ml/catboost_baseline/artifacts/
 ml/catboost_baseline/.mlflow/
+ml/lightgbm_baseline/artifacts/
+ml/lightgbm_baseline/.mlflow/
 mlruns/
+
 
