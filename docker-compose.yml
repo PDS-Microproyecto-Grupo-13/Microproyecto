@@ -4,9 +4,9 @@ services:
   # ============================================================================
   mlflow-tracking:
     build:
-      context: ./mlops/tracking
+      context: ./model_provider/tracking
       dockerfile: Dockerfile
-    container_name: mlops-tracking
+    container_name: model-provider-tracking
     restart: unless-stopped
     ports:
       - "5000:5000"
@@ -14,7 +14,8 @@ services:
       - MLFLOW_HOST=0.0.0.0
       - MLFLOW_PORT=5000
       - MLFLOW_BACKEND_STORE_URI=sqlite:////var/lib/mlflow/db/mlflow.db
-      - MLFLOW_ARTIFACT_ROOT=/var/lib/mlflow/artifacts
+      - MLFLOW_ARTIFACTS_DESTINATION=/var/lib/mlflow/artifacts
+      - MLFLOW_SERVER_ALLOWED_HOSTS=mlflow-tracking:5000,localhost:*,127.0.0.1:*
     volumes:
       - mlflow-db-data:/var/lib/mlflow/db
       - mlflow-artifact-data:/var/lib/mlflow/artifacts
@@ -32,15 +33,15 @@ services:
   # ============================================================================
   inference:
     build:
-      context: ./mlops/inference
+      context: ./model_provider/inference
       dockerfile: Dockerfile
-    container_name: mlops-inference
+    container_name: model-provider-inference
     restart: unless-stopped
     ports:
       - "5001:5001"
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow-tracking:5000
-      - MODEL_NAME=salary_predict_model
+      - MODEL_NAME=toy-classifier
       - MODEL_ALIAS=champion
       - INFERENCE_HOST=0.0.0.0
       - INFERENCE_PORT=5001
