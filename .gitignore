@@ -1,23 +1,45 @@
-# Secrets
+# Secrets & local env files
 .env
+.env.local
+.env.*.local
 
-# Python
+# Python artifacts
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
 .venv/
+venv/
+env/
 *.egg-info/
+dist/
+build/
+
+# Testing & quality
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # Notebook checkpoints
 .ipynb_checkpoints/
-
-# OS
-.DS_Store
-
-# ABC Notebooks
 notebooks/abc/**
 
 # Local model experiments
 ml/catboost_baseline/artifacts/
 ml/catboost_baseline/.mlflow/
+
+# MLflow local databases & artifacts (when running outside docker)
+mlflow.db
+mlartifacts/
 mlruns/
 
+# Node.js
+node_modules/
+
+# OS & Editor
+.DS_Store
+.idea/
+.vscode/
+*.swp

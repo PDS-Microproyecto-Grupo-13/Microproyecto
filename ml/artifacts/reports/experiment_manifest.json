@@ -1,0 +1,10 @@
+{
+  "candidate": true,
+  "dataset_fingerprint": "75a1d74a59df9cb0a78ecc0a36085bf8a85239557f178d3b8d758e88b26416e1",
+  "dvc_revision": "486f55accecbeae375e692dd12798c933b76025ee83a404a6008f5478c914a92",
+  "git_commit": "21972c7af3cff8c10ab9f89a304cec7098c669a6",
+  "git_dirty": true,
+  "params_hash": "ff9b6bf89c45f6421fe081e6099642070dbef19ac50be555469b3f5990294028",
+  "primary_metric": "f1",
+  "primary_metric_value": 0.9861111111111112
+}

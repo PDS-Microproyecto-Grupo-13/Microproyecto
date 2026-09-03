@@ -1,0 +1,12 @@
+data:
+  test_size: 0.2
+  random_state: 42
+
+model:
+  algorithm: logistic_regression
+  max_iter: 1000
+  random_state: 42
+
+evaluation:
+  primary_metric: f1
+  minimum_score: 0.80

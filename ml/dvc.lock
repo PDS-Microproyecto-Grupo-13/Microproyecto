@@ -1,0 +1,123 @@
+schema: '2.0'
+stages:
+  collect:
+    cmd: python -m ml_pipeline collect
+    deps:
+    - path: src/ml_pipeline/data/collect.py
+      hash: md5
+      md5: 4558c6d2619b130adbed9ec9f906978a
+      size: 655
+    outs:
+    - path: data/raw/dataset.csv
+      hash: md5
+      md5: 5afc23b9622f8f9ffa60824f4e97d0d5
+      size: 121385
+  validate:
+    cmd: python -m ml_pipeline validate
+    deps:
+    - path: data/raw/dataset.csv
+      hash: md5
+      md5: 5afc23b9622f8f9ffa60824f4e97d0d5
+      size: 121385
+    - path: src/ml_pipeline/data/validate.py
+      hash: md5
+      md5: 5a25bce47fb9b96859096338b4ae4e46
+      size: 2414
+    outs:
+    - path: artifacts/reports/validation.json
+      hash: md5
+      md5: a767b957860e2e410831bb89ba382977
+      size: 68
+    - path: data/validated/dataset.csv
+      hash: md5
+      md5: 5afc23b9622f8f9ffa60824f4e97d0d5
+      size: 121385
+  preprocess:
+    cmd: python -m ml_pipeline preprocess
+    deps:
+    - path: data/validated/dataset.csv
+      hash: md5
+      md5: 5afc23b9622f8f9ffa60824f4e97d0d5
+      size: 121385
+    - path: src/ml_pipeline/data/preprocess.py
+      hash: md5
+      md5: d0bcab16d294e5965ebe9e6597746382
+      size: 1029
+    params:
+      params.yaml:
+        data:
+          test_size: 0.2
+          random_state: 42
+    outs:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: a0864871521c5b0a3859dc0e54ccbc29
+      size: 24681
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 7bab774b027c20cb0c5d906f7b085507
+      size: 97196
+  train:
+    cmd: python -m ml_pipeline train
+    deps:
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 7bab774b027c20cb0c5d906f7b085507
+      size: 97196
+    - path: src/ml_pipeline/modeling/train.py
+      hash: md5
+      md5: 1bc1d06ee8bab7de29ea821cefc3b046
+      size: 1527
+    params:
+      params.yaml:
+        model:
+          algorithm: logistic_regression
+          max_iter: 1000
+          random_state: 42
+    outs:
+    - path: artifacts/work/model
+      hash: md5
+      md5: f028a371875a7554d12fc0d4d5e2dc20.dir
+      size: 3601
+      nfiles: 1
+  evaluate:
+    cmd: python -m ml_pipeline evaluate
+    deps:
+    - path: artifacts/work/model/model.joblib
+      hash: md5
+      md5: 43188f157515802a01687f796eccc5f1
+      size: 3601
+    - path: data/processed/test.csv
+      hash: md5
+      md5: a0864871521c5b0a3859dc0e54ccbc29
+      size: 24681
+    - path: src/ml_pipeline/modeling/candidate.py
+      hash: md5
+      md5: 3dc4b6b23a42e06445ed7e596eb9c3db
+      size: 564
+    - path: src/ml_pipeline/modeling/evaluate.py
+      hash: md5
+      md5: 0240d73ed50ce90eb4d87e3147caf195
+      size: 1919
+    - path: src/ml_pipeline/tracking/lineage.py
+      hash: md5
+      md5: 90db9175bb22c912737c48b5e803fd7e
+      size: 1644
+    params:
+      params.yaml:
+        evaluation:
+          primary_metric: f1
+          minimum_score: 0.8
+    outs:
+    - path: artifacts/reports/candidate.json
+      hash: md5
+      md5: 9c7eb65c36b360e6cfac10fc7da264ec
+      size: 40
+    - path: artifacts/reports/experiment_manifest.json
+      hash: md5
+      md5: dcd2f48536fcbaa974675626894c101c
+      size: 441
+    - path: artifacts/reports/metrics.json
+      hash: md5
+      md5: 60c4cfe139cfd8d04a79f6bb0e36fae4
+      size: 132
