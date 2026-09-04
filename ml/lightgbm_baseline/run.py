@@ -13,7 +13,8 @@ import numpy as np
 import pandas as pd
 import yaml
 
-
+# Reused as-is: these modules have no CatBoost-specific logic, import
+# them directly from the catboost's package.
 from ml.catboost_baseline.data import (
     discover_csv_files,
     load_raw_data,
@@ -30,7 +31,7 @@ from ml.catboost_baseline.evaluation import (
 )
 from ml.catboost_baseline.features import build_features
 
-from .evaluation import (
+from .evaluation_extras import (
     company_generalization_dummy_metrics,
     company_generalization_metrics,
     company_generalization_summary,
@@ -60,6 +61,11 @@ def parse_args() -> argparse.Namespace:
         help="Exclude company identity to test generalization to unseen employers",
     )
     parser.add_argument("--no-mlflow", action="store_true")
+    parser.add_argument(
+        "--no-company-generalization",
+        action="store_true",
+        help="Skip the seen/unseen-company generalization check (overrides evaluation.company_generalization.enabled)",
+    )
     parser.add_argument("--run-name", default=None)
     return parser.parse_args()
 
@@ -100,6 +106,11 @@ def main() -> int:
         config["features"]["include_company"] = False
     if args.no_mlflow:
         config["tracking"]["enabled"] = False
+    config.setdefault("evaluation", {}).setdefault(
+        "company_generalization", {"enabled": True, "minimum_size": 30}
+    )
+    if args.no_company_generalization:
+        config["evaluation"]["company_generalization"]["enabled"] = False
 
     input_dir = root / config["data"]["input_dir"]
     files = discover_csv_files(input_dir, config["data"]["file_pattern"])
@@ -221,28 +232,41 @@ def main() -> int:
     # headline test_metrics above, and a train-median dummy computed per
     # segment so "% improvement over dummy" is meaningful for the
     # unseen-company population specifically, not just in aggregate.
-    company_summary = company_generalization_summary(experiment_frame["company"], train_mask, test_mask)
-    company_model_segments = company_generalization_metrics(
-        experiment_frame["company"],
-        metadata.loc[test_mask],
-        train_mask,
-        test_mask,
-        test_predictions[0],
-        test_predictions[1],
-        minimum_size=30,
-    )
-    company_dummy_segments = company_generalization_dummy_metrics(
-        experiment_frame["company"], metadata, train_mask, test_mask, minimum_size=30
-    )
-    company_dummy_mae_by_value = {row["value"]: row["mae_mean_usd"] for row in company_dummy_segments}
-    for row in company_model_segments:
-        dummy_mae = company_dummy_mae_by_value.get(row["value"])
-        row["dummy_mae_mean_usd"] = dummy_mae
-        row["improvement_over_dummy_pct"] = (
-            100 * (dummy_mae - row["mae_mean_usd"]) / dummy_mae if dummy_mae else None
+    #
+    # Toggleable via evaluation.company_generalization.enabled in params.yaml
+    # (or --no-company-generalization).
+    company_generalization_config = config["evaluation"]["company_generalization"]
+    company_summary: dict[str, object] | None = None
+    company_model_segments: list[dict[str, object]] = []
+    if company_generalization_config.get("enabled", True):
+        company_summary = company_generalization_summary(experiment_frame["company"], train_mask, test_mask)
+        company_model_segments = company_generalization_metrics(
+            experiment_frame["company"],
+            metadata.loc[test_mask],
+            train_mask,
+            test_mask,
+            test_predictions[0],
+            test_predictions[1],
+            minimum_size=int(company_generalization_config.get("minimum_size", 30)),
         )
-    pd.DataFrame(company_model_segments).to_csv(output_dir / "company_generalization_metrics.csv", index=False)
-    write_json(output_dir / "company_generalization_summary.json", company_summary)
+        company_dummy_segments = company_generalization_dummy_metrics(
+            experiment_frame["company"],
+            metadata,
+            train_mask,
+            test_mask,
+            minimum_size=int(company_generalization_config.get("minimum_size", 30)),
+        )
+        company_dummy_mae_by_value = {row["value"]: row["mae_mean_usd"] for row in company_dummy_segments}
+        for row in company_model_segments:
+            dummy_mae = company_dummy_mae_by_value.get(row["value"])
+            row["dummy_mae_mean_usd"] = dummy_mae
+            row["improvement_over_dummy_pct"] = (
+                100 * (dummy_mae - row["mae_mean_usd"]) / dummy_mae if dummy_mae else None
+            )
+        pd.DataFrame(company_model_segments).to_csv(output_dir / "company_generalization_metrics.csv", index=False)
+        write_json(output_dir / "company_generalization_summary.json", company_summary)
+    else:
+        print("Skipping company generalization metrics (evaluation.company_generalization.enabled=false)")
 
     metrics = {
         "validation": validation_metrics,
@@ -268,6 +292,7 @@ def main() -> int:
         "target_names": list(target_names),
         "package_versions": package_versions(),
         "smoke_test_max_rows_per_file": args.max_rows_per_file,
+        "company_generalization_enabled": bool(company_generalization_config.get("enabled", True)),
         "company_generalization_summary": company_summary,
         "best_iteration": {
             target_names[0]: getattr(first_model, "best_iteration_", None),
@@ -298,14 +323,15 @@ def main() -> int:
         * (dummy_metrics["mae_mean_usd"] - test_metrics["mae_mean_usd"])
         / dummy_metrics["mae_mean_usd"],
         "mlflow": tracking_result,
-        "company_generalization": {
+    }
+    if company_summary is not None:
+        summary["company_generalization"] = {
             "unseen_company_pct": company_summary["unseen_company_pct"],
             "segments": [
                 {"value": row["value"], "mae_mean_usd": row["mae_mean_usd"], "rows": row["rows"]}
                 for row in company_model_segments
             ],
-        },
-    }
+        }
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0
 

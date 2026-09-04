@@ -11,6 +11,12 @@ features:
   include_company: true
   target_strategy: minimum_width_log
 
+evaluation:
+  # Seen-vs-unseen-company generalization check (ml/lightgbm_baseline/evaluation.py).
+  company_generalization:
+    enabled: true
+    minimum_size: 30
+
 model:
   objective: mae
   metric: mae

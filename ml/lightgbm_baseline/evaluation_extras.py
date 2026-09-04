@@ -6,9 +6,7 @@ import pandas as pd
 from ml.catboost_baseline.evaluation import regression_metrics
 
 # This module is additive to ml.catboost_baseline.evaluation, not a
-# replacement for it. The metric itself is model-agnostic,  so the
-# CatBoost baseline could import from here too if the team wants it later.
-
+# replacement for it. The metric itself is model-agnostic
 
 def seen_company_mask(
     company_series: pd.Series,
