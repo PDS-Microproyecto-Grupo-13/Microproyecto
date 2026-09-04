@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -120,6 +121,12 @@ def predict_range(
 
 
 def main() -> int:
+    if os.name == "nt":
+        for stream in (sys.stdout, sys.stderr):
+            reconfigure = getattr(stream, "reconfigure", None)
+            if reconfigure is not None:
+                reconfigure(encoding="utf-8", errors="replace")
+
     args = parse_args()
     root = repository_root()
     config_path = (root / args.config).resolve()
@@ -140,6 +147,15 @@ def main() -> int:
         config["tracking"]["registered_model_name"] = args.model_name
     if args.model_alias:
         config["tracking"]["model_alias"] = args.model_alias
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_name = args.run_name or (
+        f"catboost-{config['data']['experiment']}-{config['features']['target_strategy']}-{timestamp}"
+    )
+    output_root = root / config["artifacts"]["output_dir"]
+    output_dir = output_root / run_name
+    if output_dir.exists():
+        raise FileExistsError(f"Artifact output already exists: {output_dir}")
 
     input_dir = root / config["data"]["input_dir"]
     files = discover_csv_files(input_dir, config["data"]["file_pattern"])
@@ -240,12 +256,6 @@ def main() -> int:
         dummy_maximum,
     )
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    run_name = args.run_name or (
-        f"catboost-{config['data']['experiment']}-{strategy}-{timestamp}"
-    )
-    output_root = root / config["artifacts"]["output_dir"]
-    output_dir = output_root / run_name
     output_dir.mkdir(parents=True, exist_ok=False)
     first_model.save_model(output_dir / f"model_{target_names[0]}.cbm")
     second_model.save_model(output_dir / f"model_{target_names[1]}.cbm")

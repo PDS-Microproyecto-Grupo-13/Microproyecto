@@ -16,6 +16,7 @@ services:
       - MLFLOW_BACKEND_STORE_URI=sqlite:////var/lib/mlflow/db/mlflow.db
       - MLFLOW_ARTIFACT_ROOT=/var/lib/mlflow/artifacts
       - MLFLOW_SERVE_ARTIFACTS=true
+      - MLFLOW_ALLOWED_HOSTS=localhost,localhost:*,127.0.0.1,127.0.0.1:*,mlflow-tracking,mlflow-tracking:*
     volumes:
       - mlflow-db-data:/var/lib/mlflow/db
       - mlflow-artifact-data:/var/lib/mlflow/artifacts
