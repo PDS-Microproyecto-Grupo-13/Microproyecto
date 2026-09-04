@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urldefrag
-import re
 
 import numpy as np
 import pandas as pd
@@ -189,9 +188,9 @@ def prepare_model_data(raw: pd.DataFrame, outlier_iqr_multiplier: float = 3.0) -
 
     audit: dict[str, object] = {
         "source_rows": int(source_rows),
-        "unique_ids": int(len(by_id)),
+        "unique_ids": len(by_id),
         "duplicate_ids_removed": int(source_rows - len(by_id)),
-        "unique_vacancies": int(len(deduplicated)),
+        "unique_vacancies": len(deduplicated),
         "republications_removed": int(len(by_id) - len(deduplicated)),
         "incomplete_targets": int((~has_target).sum()),
         "non_positive_targets": int((has_target & ~positive).sum()),
@@ -199,7 +198,7 @@ def prepare_model_data(raw: pd.DataFrame, outlier_iqr_multiplier: float = 3.0) -
         "far_outliers_removed": int(far_outlier.sum()),
         "outlier_lower_usd": lower,
         "outlier_upper_usd": upper,
-        "model_rows": int(len(model_frame)),
+        "model_rows": len(model_frame),
         "target_source_counts": {
             str(key): int(value)
             for key, value in model_frame["target_source"].value_counts().items()

@@ -7,7 +7,6 @@ import pandas as pd
 
 from .data import normalize_text, parse_boolean
 
-
 TOOL_ALIASES = {
     "Python": ["python"],
     "SQL": ["sql"],
@@ -102,6 +101,34 @@ def build_features(
 ) -> tuple[pd.DataFrame, list[str], pd.DataFrame]:
     """Create a compact tabular feature set aligned with the current EDA."""
 
+    features, categorical = build_inference_features(frame, include_company)
+    published = pd.to_datetime(frame["published"], errors="coerce", utc=True)
+    metadata = pd.DataFrame(
+        {
+            "id": frame["id"].astype(str),
+            "published": published,
+            "target_source": frame["target_source"].astype(str),
+            "experience_level": features["experience_level"],
+            "primary_country": features["primary_country"],
+            "role_family": features["role_family"],
+            "y_min_usd": frame["y_min_usd"].astype(float),
+            "y_max_usd": frame["y_max_usd"].astype(float),
+        },
+        index=frame.index,
+    )
+    return features, categorical, metadata
+
+
+def build_inference_features(
+    frame: pd.DataFrame, include_company: bool = True
+) -> tuple[pd.DataFrame, list[str]]:
+    """Build the same feature matrix from the public inference contract.
+
+    The serving payload intentionally contains no identifiers or salary targets.
+    Keeping this transformation beside the training transformation prevents drift
+    when new model versions are packaged.
+    """
+
     index = frame.index
     experience = pd.to_numeric(frame.get("experience_years"), errors="coerce")
     experience = experience.where(experience.between(0, 50))
@@ -188,17 +215,4 @@ def build_features(
     for column in categorical:
         features[column] = features[column].fillna("Sin información").astype(str)
 
-    metadata = pd.DataFrame(
-        {
-            "id": frame["id"].astype(str),
-            "published": published,
-            "target_source": frame["target_source"].astype(str),
-            "experience_level": features["experience_level"],
-            "primary_country": features["primary_country"],
-            "role_family": features["role_family"],
-            "y_min_usd": frame["y_min_usd"].astype(float),
-            "y_max_usd": frame["y_max_usd"].astype(float),
-        },
-        index=index,
-    )
-    return features, categorical, metadata
+    return features, categorical

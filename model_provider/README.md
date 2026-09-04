@@ -1,6 +1,6 @@
 # SalaryPredict — Infraestructura MLOps (MLflow + Docker Compose)
 
-Infraestructura base del módulo `mlops/` para la plataforma **SalaryPredict**, proporcionando **MLflow Tracking Server**, **Model Registry**, **MLflow Model Serving (Inference)**, scripts de promoción/inspección y orquestación reproducible con **Docker Compose**.
+Infraestructura del módulo `model_provider/` para **SalaryPredict**, con MLflow Tracking, Model Registry, serving, promoción e integración por Docker Compose. El flujo CatBoost real está documentado en [`../DEPLOYMENT.md`](../DEPLOYMENT.md); el modelo demo de este documento se conserva únicamente para pruebas rápidas de infraestructura.
 
 ---
 
@@ -46,11 +46,11 @@ Infraestructura base del módulo `mlops/` para la plataforma **SalaryPredict**, 
 
 ### Separación de Responsabilidades
 
-* **`mlops/tracking/`**: Servidor de tracking y Model Registry persistente sobre SQLite y volumen de artefactos.
-* **`mlops/inference/`**: Servidor oficial de inferencia (`mlflow models serve`) con wrapper operacional (`start.py`) que resuelve el alias `champion` a una versión concreta al arrancar.
-* **`mlops/scripts/`**: Utilidades CLI para promoción de versiones a alias e inspección de metadatos.
-* **`mlops/dev/`**: Utilidad bootstrap para registrar modelos demo con el fin de validar el ciclo end-to-end.
-* **`mlops/config/`**: Plantillas de variables de entorno para tracking e inferencia.
+* **`model_provider/tracking/`**: Servidor de tracking y Model Registry persistente sobre SQLite y volumen de artefactos.
+* **`model_provider/inference/`**: Servidor oficial de inferencia (`mlflow models serve`) con wrapper operacional (`start.py`) que resuelve el alias `champion` a una versión concreta al arrancar.
+* **`model_provider/scripts/`**: Utilidades CLI para promoción de versiones a alias e inspección de metadatos.
+* **`model_provider/dev/`**: Utilidad bootstrap para registrar modelos demo con el fin de validar el ciclo end-to-end.
+* **`model_provider/config/`**: Plantillas de variables de entorno para tracking e inferencia.
 
 ---
 
@@ -86,7 +86,7 @@ docker compose up -d mlflow-tracking
 Ejecuta el script de demostración para entrenar un modelo sintético en memoria, registrar el run en MLflow y asignarle el alias `champion`:
 
 ```bash
-python mlops/dev/register_demo_model.py --version-tag v1
+python model_provider/dev/register_demo_model.py --version-tag v1
 ```
 
 Salida esperada:
@@ -159,7 +159,7 @@ Respuesta esperada:
 Genera una nueva versión del modelo (por ejemplo, con un algoritmo `GradientBoostingRegressor`):
 
 ```bash
-python mlops/dev/register_demo_model.py --version-tag v2 --no-set-champion
+python model_provider/dev/register_demo_model.py --version-tag v2 --no-set-champion
 ```
 
 Salida:
@@ -174,7 +174,7 @@ Salida:
 Utiliza el script administrativo `promote_model.py`:
 
 ```bash
-python mlops/scripts/promote_model.py \
+python model_provider/scripts/promote_model.py \
   --model salary_predict_model \
   --version 2 \
   --alias champion
@@ -220,19 +220,19 @@ Salida:
 
 ```bash
 # Ver información general y todas las versiones registradas
-python mlops/scripts/model_info.py --model salary_predict_model
+python model_provider/scripts/model_info.py --model salary_predict_model
 
 # Resolver qué versión tiene actualmente el alias 'champion'
-python mlops/scripts/model_info.py --model salary_predict_model --alias champion
+python model_provider/scripts/model_info.py --model salary_predict_model --alias champion
 
 # Inspeccionar una versión concreta
-python mlops/scripts/model_info.py --model salary_predict_model --version 2
+python model_provider/scripts/model_info.py --model salary_predict_model --version 2
 ```
 
 ### Promover Modelo (`promote_model.py`)
 
 ```bash
-python mlops/scripts/promote_model.py \
+python model_provider/scripts/promote_model.py \
   --model salary_predict_model \
   --version <VERSION_NUM> \
   --alias champion \
@@ -263,7 +263,7 @@ docker compose up -d
 Ejecutar la suite de tests unitarios del módulo MLOps:
 
 ```bash
-pytest mlops/tests -v
+pytest model_provider/tests -v
 ```
 
 ---
@@ -273,7 +273,7 @@ pytest mlops/tests -v
 | Problema | Causa Probable | Solución |
 | :--- | :--- | :--- |
 | `Unable to connect to MLflow Tracking Server` | El contenedor `mlflow-tracking` no ha iniciado o no está saludable. | Verificar logs con `docker compose logs mlflow-tracking` y confirmar que responde en el puerto 5000. |
-| `Registered model '...' does not exist` | El modelo aún no ha sido registrado en MLflow Model Registry. | Ejecutar `python mlops/dev/register_demo_model.py` antes de iniciar el contenedor de inferencia. |
-| `Alias 'champion' is not configured` | El modelo existe pero no tiene asignado el alias objetivo. | Promover una versión con `python mlops/scripts/promote_model.py --model <NAME> --version 1 --alias champion`. |
+| `Registered model '...' does not exist` | El modelo aún no ha sido registrado en MLflow Model Registry. | Registrar CatBoost como indica `DEPLOYMENT.md` o usar `python model_provider/dev/register_demo_model.py` para una prueba. |
+| `Alias 'champion' is not configured` | El modelo existe pero no tiene asignado el alias objetivo. | Promover una versión con `python model_provider/scripts/promote_model.py --model <NAME> --version 1 --alias champion`. |
 | `Inference container unhealthy` | El modelo tardó en cargar o falló la verificación de `/health`. | Revisar `docker compose logs inference` y el log de `healthcheck.py`. |
 | `Port conflict on 5000 / 5001` | Otro proceso local está ocupando el puerto. | Modificar `ports` en `docker-compose.yml` o detener el proceso en conflicto. |

@@ -1,6 +1,7 @@
 import pytest
 from mlflow.exceptions import MlflowException
-from mlops.scripts.model_info import format_timestamp, inspect_model
+
+from model_provider.scripts.model_info import format_timestamp, inspect_model
 
 
 def test_format_timestamp():

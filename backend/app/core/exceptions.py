@@ -108,7 +108,7 @@ async def validation_exception_handler(
         request_id=request_id,
         details=exc.errors(),
     ).model_dump(exclude_none=True)
-    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=content)
+    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, content=content)
 
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:

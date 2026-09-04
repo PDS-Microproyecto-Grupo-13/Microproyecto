@@ -4,7 +4,7 @@ services:
   # ============================================================================
   mlflow-tracking:
     build:
-      context: ./mlops/tracking
+      context: ./model_provider/tracking
       dockerfile: Dockerfile
     container_name: mlops-tracking
     restart: unless-stopped
@@ -15,6 +15,7 @@ services:
       - MLFLOW_PORT=5000
       - MLFLOW_BACKEND_STORE_URI=sqlite:////var/lib/mlflow/db/mlflow.db
       - MLFLOW_ARTIFACT_ROOT=/var/lib/mlflow/artifacts
+      - MLFLOW_SERVE_ARTIFACTS=true
     volumes:
       - mlflow-db-data:/var/lib/mlflow/db
       - mlflow-artifact-data:/var/lib/mlflow/artifacts
@@ -32,7 +33,7 @@ services:
   # ============================================================================
   inference:
     build:
-      context: ./mlops/inference
+      context: ./model_provider/inference
       dockerfile: Dockerfile
     container_name: mlops-inference
     restart: unless-stopped
@@ -78,6 +79,8 @@ services:
       - LOG_FORMAT=console
       - INFERENCE_BASE_URL=http://inference:5001
       - INFERENCE_TIMEOUT_SECONDS=10.0
+      - MODEL_NAME=salary_predict_model
+      - MODEL_ALIAS=champion
       - CORS_ORIGINS=http://localhost:5173,http://localhost:80,http://localhost
     depends_on:
       inference:

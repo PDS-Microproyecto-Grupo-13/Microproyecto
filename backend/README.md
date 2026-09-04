@@ -56,6 +56,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 * **Healthcheck:** `GET http://localhost:8000/api/v1/health`
 * **Swagger UI (OpenAPI):** `http://localhost:8000/docs`
 * **Esquema OpenAPI JSON:** `http://localhost:8000/openapi.json`
+* **Predicción salarial:** `POST http://localhost:8000/api/v1/predictions`
+* **Selector del modelo:** `GET http://localhost:8000/api/v1/predictions/model`
 
 ### Ejemplo de respuesta de Healthcheck
 
@@ -113,3 +115,8 @@ docker build -t mlops-backend .
 ```bash
 docker run --rm -p 8000:8000 --env-file .env mlops-backend
 ```
+
+El backend no carga artefactos de ML directamente. Traduce el contrato público al
+protocolo de MLflow y consulta `INFERENCE_BASE_URL`. `MODEL_NAME` y `MODEL_ALIAS`
+identifican el selector desplegado que se devuelve al tablero. Consulte
+[`../DEPLOYMENT.md`](../DEPLOYMENT.md) para ejecutar el flujo completo.

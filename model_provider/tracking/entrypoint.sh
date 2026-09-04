@@ -6,6 +6,7 @@ MLFLOW_HOST="${MLFLOW_HOST:-0.0.0.0}"
 MLFLOW_PORT="${MLFLOW_PORT:-5000}"
 MLFLOW_BACKEND_STORE_URI="${MLFLOW_BACKEND_STORE_URI:-sqlite:////var/lib/mlflow/db/mlflow.db}"
 MLFLOW_ARTIFACT_ROOT="${MLFLOW_ARTIFACT_ROOT:-/var/lib/mlflow/artifacts}"
+MLFLOW_SERVE_ARTIFACTS="${MLFLOW_SERVE_ARTIFACTS:-true}"
 
 # Ensure directories for SQLite database and artifacts exist
 mkdir -p /var/lib/mlflow/db
@@ -17,10 +18,18 @@ echo " Host:               $MLFLOW_HOST"
 echo " Port:               $MLFLOW_PORT"
 echo " Backend Store URI:  $MLFLOW_BACKEND_STORE_URI"
 echo " Artifact Root:      $MLFLOW_ARTIFACT_ROOT"
+echo " Serve Artifacts:    $MLFLOW_SERVE_ARTIFACTS"
 echo "================================================================="
 
-exec mlflow server \
-    --host "$MLFLOW_HOST" \
-    --port "$MLFLOW_PORT" \
-    --backend-store-uri "$MLFLOW_BACKEND_STORE_URI" \
-    --default-artifact-root "$MLFLOW_ARTIFACT_ROOT"
+ARGS=(
+    server
+    --host "$MLFLOW_HOST"
+    --port "$MLFLOW_PORT"
+    --backend-store-uri "$MLFLOW_BACKEND_STORE_URI"
+)
+if [[ "$MLFLOW_SERVE_ARTIFACTS" == "true" ]]; then
+    ARGS+=(--serve-artifacts --artifacts-destination "$MLFLOW_ARTIFACT_ROOT")
+else
+    ARGS+=(--default-artifact-root "$MLFLOW_ARTIFACT_ROOT")
+fi
+exec mlflow "${ARGS[@]}"

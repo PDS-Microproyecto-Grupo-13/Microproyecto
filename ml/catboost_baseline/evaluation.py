@@ -116,7 +116,7 @@ def segment_metrics(
                 {
                     "segment": column,
                     "value": str(value),
-                    "rows": int(len(group)),
+                    "rows": len(group),
                     "mae_y1_usd": metrics["mae_y1_usd"],
                     "mae_y2_usd": metrics["mae_y2_usd"],
                     "mae_mean_usd": metrics["mae_mean_usd"],

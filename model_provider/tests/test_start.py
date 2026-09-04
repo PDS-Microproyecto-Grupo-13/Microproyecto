@@ -2,7 +2,8 @@ import sys
 
 import pytest
 from mlflow.exceptions import MlflowException
-from mlops.inference.start import (
+
+from model_provider.inference.start import (
     ServingConfig,
     build_serve_command,
     load_config_from_env,
@@ -137,7 +138,7 @@ def test_build_serve_command():
         env_manager="local",
     )
 
-    from mlops.inference.start import ResolvedModelInfo
+    from model_provider.inference.start import ResolvedModelInfo
 
     model_info = ResolvedModelInfo(
         model_name="salary_predict_model",

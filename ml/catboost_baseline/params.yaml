@@ -29,6 +29,9 @@ tracking:
   enabled: true
   tracking_uri: sqlite:///ml/catboost_baseline/.mlflow/mlflow.db
   experiment_name: salary-catboost-baseline
+  registered_model_name: salary_predict_model
+  register_model: false
+  model_alias: ""
 
 artifacts:
   output_dir: ml/catboost_baseline/artifacts

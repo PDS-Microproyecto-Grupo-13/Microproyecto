@@ -1,140 +1,65 @@
-import {
-  Sparkles,
-  ChevronDown,
-  Sliders,
-  TrendingUp,
-  Info,
-} from "lucide-react";
+import { useState } from "react";
+import type { FormEvent } from "react";
+import { Info, LoaderCircle, Sparkles, TrendingUp } from "lucide-react";
 import { PageHeader } from "../../components/ui/PageHeader/PageHeader";
 import { Card } from "../../components/ui/Card/Card";
+import { predictSalary, type SalaryPredictionResponse } from "../../services/salaryApi";
 import styles from "./SalaryPredictionPage.module.css";
 
+const currency = new Intl.NumberFormat("es-CO", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
 export function SalaryPredictionPage() {
+  const [result, setResult] = useState<SalaryPredictionResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    const data = new FormData(event.currentTarget);
+    try {
+      const technologies = String(data.get("technologies") ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+      const years = String(data.get("experience_years") ?? "").trim();
+      setResult(await predictSalary({
+        title: String(data.get("title")), experience_level: String(data.get("experience_level")),
+        experience_years: years ? Number(years) : null, country: String(data.get("country")),
+        is_remote: data.get("is_remote") === "on", company: String(data.get("company") ?? "") || null,
+        company_is_agency: data.get("company_is_agency") === "on", technologies,
+        topics: ["Data Science", "Machine Learning"],
+      }));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No fue posible ejecutar la predicción.");
+    } finally { setLoading(false); }
+  }
+
   return (
     <div className={styles.container}>
-      <PageHeader
-        title="Predicción Salarial"
-        subtitle="Calcula el salario esperado mediante inferencia sobre el modelo de Machine Learning"
-        badge="Inferencia ML"
-      />
-
+      <PageHeader title="Predicción Salarial" subtitle="Estima un rango anual en USD con el modelo CatBoost desplegado en MLflow" badge="Inferencia ML" />
       <div className={styles.grid}>
-        {/* Input Parameters Form (Visual Placeholder) */}
-        <Card
-          title="Parámetros del Perfil"
-          subtitle="Define las variables para ejecutar la estimación salarial"
-          action={<Sliders size={18} color="var(--color-primary)" />}
-        >
-          <div className={styles.formPlaceholder}>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Rol Profesional</label>
-              <div className={styles.inputMock}>
-                <span>Ej. Data Scientist / ML Engineer</span>
-                <ChevronDown size={16} />
-              </div>
+        <Card title="Parámetros del perfil" subtitle="La solicitud se procesa mediante la API del proyecto">
+          <form className={styles.form} onSubmit={submit}>
+            <label className={styles.formGroup}><span className={styles.label}>Rol profesional</span><input name="title" defaultValue="Data Scientist" required minLength={2} /></label>
+            <div className={styles.twoColumns}>
+              <label className={styles.formGroup}><span className={styles.label}>Nivel de experiencia</span><select name="experience_level" defaultValue="SE"><option value="EN">Entrada</option><option value="MI">Intermedio</option><option value="SE">Senior</option><option value="EX">Ejecutivo</option></select></label>
+              <label className={styles.formGroup}><span className={styles.label}>Años de experiencia</span><input name="experience_years" type="number" min="0" max="50" step="0.5" defaultValue="5" /></label>
             </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Nivel de Experiencia (Seniority)</label>
-              <div className={styles.inputMock}>
-                <span>Senior (5+ años)</span>
-                <ChevronDown size={16} />
-              </div>
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Ubicación / Región</label>
-              <div className={styles.inputMock}>
-                <span>Remoto - LATAM / USA</span>
-                <ChevronDown size={16} />
-              </div>
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Modalidad de Trabajo</label>
-              <div className={styles.inputMock}>
-                <span>100% Remoto</span>
-                <ChevronDown size={16} />
-              </div>
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Tecnologías y Stack Principal</label>
-              <div className={styles.inputMock}>
-                <span>Python, Docker, FastAPI, SQL, AWS</span>
-              </div>
-            </div>
-
-            <div className={styles.buttonMock}>
-              <Sparkles size={18} />
-              <span>Ejecutar Predicción (Placeholder)</span>
-            </div>
-          </div>
+            <label className={styles.formGroup}><span className={styles.label}>País</span><input name="country" defaultValue="Colombia" required /></label>
+            <label className={styles.formGroup}><span className={styles.label}>Empresa (opcional)</span><input name="company" placeholder="Ej. Acme Analytics" /></label>
+            <label className={styles.formGroup}><span className={styles.label}>Tecnologías, separadas por coma</span><input name="technologies" defaultValue="Python, SQL, AWS, Docker" /></label>
+            <div className={styles.checks}><label><input name="is_remote" type="checkbox" defaultChecked /> Trabajo remoto</label><label><input name="company_is_agency" type="checkbox" /> Publicado por agencia</label></div>
+            <button className={styles.submitButton} type="submit" disabled={loading}>{loading ? <LoaderCircle className={styles.spinner} size={18} /> : <Sparkles size={18} />}{loading ? "Calculando..." : "Ejecutar predicción"}</button>
+            {error && <p className={styles.error} role="alert">{error}</p>}
+          </form>
         </Card>
-
-        {/* Prediction Results Preview (Visual Placeholder) */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xl)" }}>
-          <Card
-            title="Estimación del Modelo"
-            subtitle="Resultado generado a partir de variables ingresadas"
-            action={<TrendingUp size={18} color="var(--color-success)" />}
-          >
-            <div className={styles.resultBox}>
-              <span className={styles.resultLabel}>Salario Anual Estimado</span>
-              <span className={styles.resultAmount}>$68,400 USD</span>
-              <span className={styles.resultRange}>
-                Rango estimado: $59,000 — $78,000 USD
-              </span>
-            </div>
-
-            <h4
-              style={{
-                fontSize: "0.9rem",
-                fontWeight: 600,
-                marginBottom: "var(--space-sm)",
-                color: "var(--color-text-primary)",
-              }}
-            >
-              Factores de Mayor Impacto (Feature Importance)
-            </h4>
-
-            <div className={styles.factorsList}>
-              <div className={styles.factorItem}>
-                <span>Seniority (Años exp.)</span>
-                <div className={styles.factorBarWrapper}>
-                  <div className={styles.factorBarFill} style={{ width: "85%" }} />
-                </div>
-                <strong>+38%</strong>
-              </div>
-
-              <div className={styles.factorItem}>
-                <span>Modalidad Remota Intl.</span>
-                <div className={styles.factorBarWrapper}>
-                  <div className={styles.factorBarFill} style={{ width: "65%" }} />
-                </div>
-                <strong>+24%</strong>
-              </div>
-
-              <div className={styles.factorItem}>
-                <span>Stack Cloud (AWS/GCP)</span>
-                <div className={styles.factorBarWrapper}>
-                  <div className={styles.factorBarFill} style={{ width: "45%" }} />
-                </div>
-                <strong>+16%</strong>
-              </div>
-            </div>
+        <div className={styles.resultsColumn}>
+          <Card title="Estimación del modelo" subtitle={result ? "Predicción recibida desde MLflow" : "Complete el perfil para calcular el rango"} action={<TrendingUp size={18} color="var(--color-success)" />}>
+            <div className={styles.resultBox} aria-live="polite"><span className={styles.resultLabel}>Punto medio estimado</span><span className={styles.resultAmount}>{result ? currency.format(result.prediction.midpoint_usd) : "—"}</span><span className={styles.resultRange}>{result ? `${currency.format(result.prediction.minimum_usd)} – ${currency.format(result.prediction.maximum_usd)}` : "El resultado aparecerá aquí"}</span></div>
+            {result?.warnings.map((warning) => <p className={styles.warning} key={warning}>{warning}</p>)}
+            <p className={styles.disclaimer}>Estimación académica basada en vacantes publicadas; no constituye una oferta ni asesoría laboral.</p>
           </Card>
-
-          <Card
-            title="Información del Modelo"
-            subtitle="Metadatos de la última versión desplegada"
-            action={<Info size={18} color="var(--color-text-secondary)" />}
-          >
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)", fontSize: "0.85rem" }}>
-              <p><strong>Algoritmo:</strong> GradientBoostingRegressor</p>
-              <p><strong>Dataset Base:</strong> Foorilla Ingestion (Aug 2026)</p>
-              <p><strong>Métrica MAE:</strong> ± $4,250 USD</p>
-            </div>
+          <Card title="Modelo desplegado" subtitle="Selector estable para facilitar nuevas versiones" action={<Info size={18} color="var(--color-text-secondary)" />}>
+            <dl className={styles.metadata}><div><dt>Familia</dt><dd>CatBoost, dos salidas</dd></div><div><dt>Modelo</dt><dd>{result?.model.name ?? "salary_predict_model"}</dd></div><div><dt>Alias</dt><dd>{result?.model.alias ?? "champion"}</dd></div><div><dt>Respuesta</dt><dd>Mínimo, máximo y punto medio</dd></div></dl>
           </Card>
         </div>
       </div>

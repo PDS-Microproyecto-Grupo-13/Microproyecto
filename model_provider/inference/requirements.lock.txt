@@ -28,6 +28,8 @@ cachetools==7.1.7
     # via
     #   mlflow-skinny
     #   mlflow-tracing
+catboost==1.2.10
+    # via -r requirements.txt
 certifi==2026.7.22
     # via
     #   httpcore
@@ -76,6 +78,8 @@ gitdb==4.0.12
     # via gitpython
 gitpython==3.1.59
     # via mlflow-skinny
+graphviz==0.21
+    # via catboost
 google-auth==2.56.3
     # via databricks-sdk
 graphene==3.4.3
@@ -177,6 +181,8 @@ pandas==2.3.3
     # via mlflow
 pillow==12.3.0
     # via matplotlib
+plotly==7.0.0
+    # via catboost
 prettytable==3.18.0
     # via skops
 propcache==0.5.2

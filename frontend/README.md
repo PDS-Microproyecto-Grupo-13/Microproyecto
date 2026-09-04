@@ -38,3 +38,7 @@ npm run build
 npm run lint
 npm run dev
 ```
+
+La vista de predicción consume `POST /api/v1/predictions`. Vite redirige `/api` a
+`http://localhost:8000` durante desarrollo y Nginx lo redirige al servicio `backend`
+en Docker. El navegador nunca llama directamente al servidor MLflow.
