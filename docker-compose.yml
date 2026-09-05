@@ -41,7 +41,7 @@ services:
     ports:
       - "5001:5001"
     environment:
-      - MLFLOW_TRACKING_URI=http://mlflow-tracking:5000
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://mlflow-tracking:5000}
       - MODEL_NAME=salary_predict_model
       - MODEL_ALIAS=champion
       - INFERENCE_HOST=0.0.0.0

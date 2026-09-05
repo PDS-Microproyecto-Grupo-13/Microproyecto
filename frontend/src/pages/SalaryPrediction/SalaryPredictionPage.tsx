@@ -35,7 +35,7 @@ export function SalaryPredictionPage() {
 
   return (
     <div className={styles.container}>
-      <PageHeader title="Predicción Salarial" subtitle="Estima un rango anual en USD con el modelo CatBoost desplegado en MLflow" badge="Inferencia ML" />
+      <PageHeader title="Predicción Salarial" subtitle="Estima un rango anual en USD con el modelo desplegado en MLflow" badge="Inferencia ML" />
       <div className={styles.grid}>
         <Card title="Parámetros del perfil" subtitle="La solicitud se procesa mediante la API del proyecto">
           <form className={styles.form} onSubmit={submit}>
@@ -59,7 +59,7 @@ export function SalaryPredictionPage() {
             <p className={styles.disclaimer}>Estimación académica basada en vacantes publicadas; no constituye una oferta ni asesoría laboral.</p>
           </Card>
           <Card title="Modelo desplegado" subtitle="Selector estable para facilitar nuevas versiones" action={<Info size={18} color="var(--color-text-secondary)" />}>
-            <dl className={styles.metadata}><div><dt>Familia</dt><dd>CatBoost, dos salidas</dd></div><div><dt>Modelo</dt><dd>{result?.model.name ?? "salary_predict_model"}</dd></div><div><dt>Alias</dt><dd>{result?.model.alias ?? "champion"}</dd></div><div><dt>Respuesta</dt><dd>Mínimo, máximo y punto medio</dd></div></dl>
+            <dl className={styles.metadata}><div><dt>Familia</dt><dd>Gradient boosting, dos salidas</dd></div><div><dt>Modelo</dt><dd>{result?.model.name ?? "salary_predict_model"}</dd></div><div><dt>Alias</dt><dd>{result?.model.alias ?? "champion"}</dd></div><div><dt>Respuesta</dt><dd>Mínimo, máximo y punto medio</dd></div></dl>
           </Card>
         </div>
       </div>
