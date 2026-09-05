@@ -63,7 +63,7 @@ MLflow y cargarlo en memoria. Espere a que anuncie que está escuchando.
 ### Terminal 2 — API del proyecto (puerto 8000)
 
 ```powershell
-$env:INFERENCE_BASE_URL = "http://localhost:5001"
+$env:INFERENCE_BASE_URL = "http://127.0.0.1:5001"
 Push-Location backend
 ..\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
 ```
@@ -71,6 +71,12 @@ Push-Location backend
 `INFERENCE_BASE_URL` no se puede omitir. El valor por defecto es
 `http://inference:5001`, que es el nombre del servicio **dentro de la red de
 Docker**; corriendo a mano ese nombre no existe.
+
+Y tiene que decir `127.0.0.1`, no `localhost`. La terminal 1 deja el servicio
+escuchando solo en IPv4, y en Windows `localhost` resuelve primero a `::1`, la
+direccion IPv6, donde no hay nadie escuchando. El sintoma es que el tablero
+responde `Server disconnected without sending a response` mientras
+`http://127.0.0.1:5001/ping` devuelve 200 sin problema.
 
 ### Terminal 3 — tablero (puerto 5173)
 
