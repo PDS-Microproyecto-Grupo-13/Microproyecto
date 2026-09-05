@@ -1,6 +1,6 @@
 # SalaryPredict — Infraestructura MLOps (MLflow + Docker Compose)
 
-Infraestructura del módulo `model_provider/` para **SalaryPredict**, con MLflow Tracking, Model Registry, serving, promoción e integración por Docker Compose. El flujo CatBoost real está documentado en [`../DEPLOYMENT.md`](../DEPLOYMENT.md); el modelo demo de este documento se conserva únicamente para pruebas rápidas de infraestructura.
+Infraestructura del módulo `model_provider/` para **SalaryPredict**, con MLflow Tracking, Model Registry, serving, promoción e integración por Docker Compose. El flujo real de los modelos salariales está documentado en [`../DEPLOYMENT.md`](../DEPLOYMENT.md); el modelo demo de este documento se conserva únicamente para pruebas rápidas de infraestructura.
 
 ---
 
@@ -273,7 +273,7 @@ pytest model_provider/tests -v
 | Problema | Causa Probable | Solución |
 | :--- | :--- | :--- |
 | `Unable to connect to MLflow Tracking Server` | El contenedor `mlflow-tracking` no ha iniciado o no está saludable. | Verificar logs con `docker compose logs mlflow-tracking` y confirmar que responde en el puerto 5000. |
-| `Registered model '...' does not exist` | El modelo aún no ha sido registrado en MLflow Model Registry. | Registrar CatBoost como indica `DEPLOYMENT.md` o usar `python model_provider/dev/register_demo_model.py` para una prueba. |
+| `Registered model '...' does not exist` | El modelo aún no ha sido registrado en MLflow Model Registry. | Registrar un modelo salarial como indica `DEPLOYMENT.md` o usar `python model_provider/dev/register_demo_model.py` para una prueba. |
 | `Alias 'champion' is not configured` | El modelo existe pero no tiene asignado el alias objetivo. | Promover una versión con `python model_provider/scripts/promote_model.py --model <NAME> --version 1 --alias champion`. |
 | `Inference container unhealthy` | El modelo tardó en cargar o falló la verificación de `/health`. | Revisar `docker compose logs inference` y el log de `healthcheck.py`. |
 | `Port conflict on 5000 / 5001` | Otro proceso local está ocupando el puerto. | Modificar `ports` en `docker-compose.yml` o detener el proceso en conflicto. |
