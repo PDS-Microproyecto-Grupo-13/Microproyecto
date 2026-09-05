@@ -2,7 +2,8 @@ from unittest.mock import MagicMock
 
 import pytest
 from mlflow.exceptions import MlflowException
-from mlops.scripts.promote_model import promote_model_version
+
+from model_provider.scripts.promote_model import promote_model_version
 
 
 def test_promote_model_version_success_with_previous_alias(mock_mlflow_client, mock_model_version):

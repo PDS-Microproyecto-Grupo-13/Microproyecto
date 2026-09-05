@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from mlops.inference.healthcheck import check_health
+from model_provider.inference.healthcheck import check_health
 
 
 def test_check_health_success():

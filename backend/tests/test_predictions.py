@@ -1,63 +1,56 @@
-from unittest.mock import AsyncMock
-
 import pytest
-from httpx import ASGITransport, AsyncClient
 
-from app.api.routes.predictions import get_breast_cancer_prediction_service
-from app.core.config import Settings
-from app.core.exceptions import InferenceUnavailableError
-from app.main import create_app
-from app.schemas.prediction import PredictionRequest, PredictionResponse
+from app.clients.inference_client import get_inference_client
+
+
+class StubInferenceClient:
+    async def predict(self, record: dict[str, object]) -> dict[str, float]:
+        assert record["title"] == "Data Scientist"
+        assert record["tags"] == "python|sql"
+        return {
+            "salary_min_usd": 90000.0,
+            "salary_max_usd": 130000.0,
+            "salary_midpoint_usd": 110000.0,
+        }
 
 
 @pytest.mark.asyncio
-async def test_prediction_endpoint_returns_public_response_schema(
-    test_settings: Settings,
-    breast_cancer_payload: dict[str, float],
-) -> None:
-    service = AsyncMock()
-    service.predict.return_value = 1
-    app = create_app(settings=test_settings)
-
-    async def override_prediction_service() -> AsyncMock:
-        return service
-
-    app.dependency_overrides[get_breast_cancer_prediction_service] = override_prediction_service
-
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+async def test_prediction_endpoint(client) -> None:
+    app = client._transport.app
+    app.dependency_overrides[get_inference_client] = lambda: StubInferenceClient()
+    try:
         response = await client.post(
             "/api/v1/predictions",
-            json=breast_cancer_payload,
+            json={
+                "title": "Data Scientist",
+                "experience_level": "SE",
+                "experience_years": 6,
+                "country": "Colombia",
+                "is_remote": True,
+                "company": "Example Corp",
+                "company_is_agency": False,
+                "technologies": ["python", "sql"],
+                "topics": ["Data Science", "Machine Learning"],
+            },
         )
+    finally:
+        app.dependency_overrides.pop(get_inference_client, None)
 
     assert response.status_code == 200
-    assert PredictionResponse.model_validate(response.json()).prediction == 1
-    request = service.predict.await_args.args[0]
-    assert request == PredictionRequest(**breast_cancer_payload)
+    body = response.json()
+    assert body["prediction"]["minimum_usd"] == 90000.0
+    assert body["prediction"]["maximum_usd"] == 130000.0
+    assert body["model"]["alias"] == "champion"
 
 
 @pytest.mark.asyncio
-async def test_prediction_endpoint_returns_503_when_inference_is_unavailable(
-    test_settings: Settings,
-    breast_cancer_payload: dict[str, float],
-) -> None:
-    service = AsyncMock()
-    service.predict.side_effect = InferenceUnavailableError()
-    app = create_app(settings=test_settings)
-
-    async def override_prediction_service() -> AsyncMock:
-        return service
-
-    app.dependency_overrides[get_breast_cancer_prediction_service] = override_prediction_service
-
-    transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-        response = await client.post(
-            "/api/v1/predictions",
-            json=breast_cancer_payload,
-        )
-
-    assert response.status_code == 503
-    assert response.json()["error"] == "inference_unavailable"
-    assert response.json()["message"] == "Inference service is unavailable"
+async def test_prediction_request_validation(client) -> None:
+    response = await client.post(
+        "/api/v1/predictions",
+        json={
+            "title": "x",
+            "experience_level": "INVALID",
+            "country": "Colombia",
+        },
+    )
+    assert response.status_code == 422

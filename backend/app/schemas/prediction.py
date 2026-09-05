@@ -1,44 +1,56 @@
-from pydantic import BaseModel, ConfigDict, Field
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+from pydantic import BaseModel, Field, field_validator
 
 
-class PredictionRequest(BaseModel):
-    """Validated Breast Cancer model features exposed with JSON-safe names."""
+class SalaryPredictionRequest(BaseModel):
+    """Stable public contract for salary-range inference."""
 
-    model_config = ConfigDict(allow_inf_nan=False)
+    title: str = Field(min_length=2, max_length=160)
+    experience_level: str = Field(pattern="^(EN|MI|SE|EX)$")
+    experience_years: float | None = Field(default=None, ge=0, le=50)
+    country: str = Field(min_length=2, max_length=100)
+    is_remote: bool = False
+    company: str | None = Field(default=None, max_length=160)
+    company_is_agency: bool = False
+    technologies: list[str] = Field(default_factory=list, max_length=30)
+    topics: list[str] = Field(default_factory=list, max_length=20)
 
-    mean_radius: float
-    mean_texture: float
-    mean_perimeter: float
-    mean_area: float
-    mean_smoothness: float
-    mean_compactness: float
-    mean_concavity: float
-    mean_concave_points: float
-    mean_symmetry: float
-    mean_fractal_dimension: float
-    radius_error: float
-    texture_error: float
-    perimeter_error: float
-    area_error: float
-    smoothness_error: float
-    compactness_error: float
-    concavity_error: float
-    concave_points_error: float
-    symmetry_error: float
-    fractal_dimension_error: float
-    worst_radius: float
-    worst_texture: float
-    worst_perimeter: float
-    worst_area: float
-    worst_smoothness: float
-    worst_compactness: float
-    worst_concavity: float
-    worst_concave_points: float
-    worst_symmetry: float
-    worst_fractal_dimension: float
+    @field_validator("technologies", "topics")
+    @classmethod
+    def clean_terms(cls, values: list[str]) -> list[str]:
+        return list(dict.fromkeys(value.strip() for value in values if value.strip()))
+
+    def to_mlflow_record(self) -> dict[str, object]:
+        return {
+            "title": self.title.strip(),
+            "experience_level": self.experience_level,
+            "experience_years": self.experience_years,
+            "has_remote": self.is_remote,
+            "work_mode": None,
+            "countries": self.country.strip(),
+            "company_is_agency": self.company_is_agency,
+            "company": (self.company or "Sin información").strip() or "Sin información",
+            "tags": "|".join(self.technologies),
+            "topics": "|".join(self.topics),
+            "published": datetime.now(UTC).isoformat(),
+        }
 
 
-class PredictionResponse(BaseModel):
-    """Public backend response for one Breast Cancer class prediction."""
+class SalaryRange(BaseModel):
+    minimum_usd: float = Field(ge=0)
+    maximum_usd: float = Field(ge=0)
+    midpoint_usd: float = Field(ge=0)
 
-    prediction: int = Field(..., description="Predicted model class")
+
+class ModelDeployment(BaseModel):
+    name: str
+    alias: str
+
+
+class SalaryPredictionResponse(BaseModel):
+    prediction: SalaryRange
+    model: ModelDeployment
+    warnings: list[str] = Field(default_factory=list)

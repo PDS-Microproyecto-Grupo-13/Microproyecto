@@ -1,40 +1,51 @@
-from collections.abc import AsyncGenerator
-from typing import Annotated
-
 from fastapi import APIRouter, Depends, status
 
+from app.clients.inference_client import InferenceClient, get_inference_client
 from app.core.config import Settings, get_settings
-from app.schemas.prediction import PredictionRequest, PredictionResponse
-from app.services.breast_cancer_prediction_service import BreastCancerPredictionService
-from app.services.inference_service import InferenceService
+from app.schemas.prediction import (
+    ModelDeployment,
+    SalaryPredictionRequest,
+    SalaryPredictionResponse,
+    SalaryRange,
+)
 
 router = APIRouter(prefix="/predictions", tags=["Predictions"])
 
 
-async def get_breast_cancer_prediction_service(
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> AsyncGenerator[BreastCancerPredictionService, None]:
-    """Provide the model adapter with a request-scoped inference client."""
-    async with InferenceService(
-        base_url=settings.INFERENCE_BASE_URL,
-        timeout_seconds=settings.INFERENCE_TIMEOUT_SECONDS,
-    ) as inference_service:
-        yield BreastCancerPredictionService(inference_service)
-
-
 @router.post(
     "",
-    response_model=PredictionResponse,
+    response_model=SalaryPredictionResponse,
     status_code=status.HTTP_200_OK,
-    summary="Predict Breast Cancer Class",
-    description="Returns a class prediction from the configured Breast Cancer model.",
+    summary="Predict a salary range",
 )
-async def predict_breast_cancer(
-    request: PredictionRequest,
-    prediction_service: Annotated[
-        BreastCancerPredictionService, Depends(get_breast_cancer_prediction_service)
-    ],
-) -> PredictionResponse:
-    """Validate public input and delegate to the model-specific service."""
-    prediction = await prediction_service.predict(request)
-    return PredictionResponse(prediction=prediction)
+async def predict_salary_range(
+    request: SalaryPredictionRequest,
+    settings: Settings = Depends(get_settings),
+    inference: InferenceClient = Depends(get_inference_client),
+) -> SalaryPredictionResponse:
+    result = await inference.predict(request.to_mlflow_record())
+
+    warnings = []
+    if request.experience_years is None:
+        warnings.append("No se informaron años de experiencia; el modelo imputó ese valor.")
+    if not request.company:
+        warnings.append("No se informó empresa; la precisión puede ser menor para este perfil.")
+    return SalaryPredictionResponse(
+        prediction=SalaryRange(
+            minimum_usd=result["salary_min_usd"],
+            maximum_usd=result["salary_max_usd"],
+            midpoint_usd=result["salary_midpoint_usd"],
+        ),
+        model=ModelDeployment(
+            name=settings.MODEL_NAME,
+            alias=settings.MODEL_ALIAS,
+        ),
+        warnings=warnings,
+    )
+
+
+@router.get("/model", response_model=ModelDeployment, summary="Deployed model selector")
+async def get_deployed_model(
+    settings: Settings = Depends(get_settings),
+) -> ModelDeployment:
+    return ModelDeployment(name=settings.MODEL_NAME, alias=settings.MODEL_ALIAS)
