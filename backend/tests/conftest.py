@@ -24,7 +24,11 @@ def test_settings() -> Settings:
 async def client(test_settings: Settings) -> AsyncGenerator[AsyncClient, None]:
     """Async HTTP test client bound to the FastAPI test application instance."""
     app = create_app(settings=test_settings)
-    app.dependency_overrides[get_settings] = lambda: test_settings
+
+    async def override_settings() -> Settings:
+        return test_settings
+
+    app.dependency_overrides[get_settings] = override_settings
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as async_client:

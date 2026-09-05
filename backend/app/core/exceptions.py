@@ -47,6 +47,39 @@ class ExternalServiceError(ApplicationError):
         self.service_name = service_name
 
 
+class InferenceUnavailableError(ApplicationError):
+    """Raised when the inference service cannot be reached."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            message="Inference service is unavailable",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            error_code="inference_unavailable",
+        )
+
+
+class InferenceTimeoutError(ApplicationError):
+    """Raised when the inference service exceeds its configured timeout."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            message="Inference service timed out",
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            error_code="inference_timeout",
+        )
+
+
+class InferenceResponseError(ApplicationError):
+    """Raised when inference returns an error or an invalid response."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            message="Inference service returned an invalid response",
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            error_code="inference_response_error",
+        )
+
+
 async def application_error_handler(request: Request, exc: ApplicationError) -> JSONResponse:
     """Handler for handled ApplicationError exceptions."""
     request_id = get_request_id()

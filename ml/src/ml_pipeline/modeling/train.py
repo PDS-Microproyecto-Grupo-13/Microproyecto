@@ -25,6 +25,7 @@ def build_reference_model(config: dict[str, object]) -> Pipeline:
             (
                 "classifier",
                 LogisticRegression(
+                    C=float(config["C"]),
                     max_iter=int(config["max_iter"]),
                     random_state=int(config.get("random_state", 42)),
                 ),

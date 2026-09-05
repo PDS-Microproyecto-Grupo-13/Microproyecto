@@ -8,4 +8,5 @@ api_router = APIRouter()
 api_router.include_router(health.router)
 api_router.include_router(predictions.router)
 
+# Future modules can be attached easily:
 # api_router.include_router(models.router, prefix="/models", tags=["Models"])
