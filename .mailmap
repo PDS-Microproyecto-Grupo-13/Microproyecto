@@ -1,0 +1,13 @@
+# Unifica las identidades de git cuando una misma persona ha hecho commits con
+# mas de un nombre o correo. Lo leen `git shortlog`, `git log` y `git blame`,
+# asi que el conteo por integrante queda correcto sin reescribir la historia.
+#
+# OJO: GitHub NO usa este archivo para su grafico de Contributors. Alli cada
+# quien debe registrar sus correos en Settings -> Emails; al hacerlo, GitHub
+# reatribuye los commits pasados de forma retroactiva.
+#
+# Formato:  Nombre canonico <correo canonico> Nombre alterno <correo alterno>
+
+Alejandra Barbosa <109240546+alebarbosac-da@users.noreply.github.com> alebarbosac-da <alebarbosac@gmail.com>
+abramiro <46508945+abramiro@users.noreply.github.com> abramiro <abramiro@gmail.com>
+Jorge <01alanjorge@gmail.com> george0616 <01alanjorge@gmail.com>
