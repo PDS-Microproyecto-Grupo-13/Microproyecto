@@ -7,6 +7,8 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import shutil
+from tempfile import TemporaryDirectory
 from typing import Any
 
 import numpy as np
@@ -30,12 +32,14 @@ from ml.catboost_baseline.evaluation import (
     training_targets,
 )
 from ml.catboost_baseline.features import build_features
+from ml.catboost_baseline.mlflow_model import serving_example
 
 from .evaluation_extras import (
     company_generalization_dummy_metrics,
     company_generalization_metrics,
     company_generalization_summary,
 )
+from .mlflow_model import SalaryRangeLightGBMPyFunc, dump_category_levels  # noqa: F401
 from .model import feature_importance_frame, to_lightgbm_frame, train_model
 
 
@@ -67,6 +71,21 @@ def parse_args() -> argparse.Namespace:
         help="Skip the seen/unseen-company generalization check (overrides evaluation.company_generalization.enabled)",
     )
     parser.add_argument("--run-name", default=None)
+    parser.add_argument(
+        "--register-model",
+        action="store_true",
+        help="Register the logged pyfunc model in MLflow's Model Registry (overrides tracking.register_model)",
+    )
+    parser.add_argument(
+        "--model-alias",
+        default=None,
+        help="Alias to set on the registered model version, e.g. 'champion' (overrides tracking.model_alias)",
+    )
+    parser.add_argument(
+        "--model-name",
+        default=None,
+        help="Registered model name to use (overrides tracking.registered_model_name)",
+    )
     return parser.parse_args()
 
 
@@ -104,6 +123,12 @@ def main() -> int:
         config["features"]["target_strategy"] = args.target_strategy
     if args.exclude_company:
         config["features"]["include_company"] = False
+    if args.register_model:
+        config["tracking"]["register_model"] = True
+    if args.model_alias is not None:
+        config["tracking"]["model_alias"] = args.model_alias
+    if args.model_name is not None:
+        config["tracking"]["registered_model_name"] = args.model_name
     if args.no_mlflow:
         config["tracking"]["enabled"] = False
     config.setdefault("evaluation", {}).setdefault(
@@ -211,6 +236,14 @@ def main() -> int:
     first_model.booster_.save_model(str(output_dir / f"model_{target_names[0]}.txt"))
     second_model.booster_.save_model(str(output_dir / f"model_{target_names[1]}.txt"))
 
+    # Category levels as fixed by to_lightgbm_frame on the full pre-split
+    # frame -- must be re-applied at inference time (see mlflow_model.py's
+    # SalaryRangeLightGBMPyFunc._apply_training_categories), or a served
+    # request gets silently wrong predictions rather than an error.
+    levels_path = dump_category_levels(
+        features, categorical_features, output_dir / "category_levels.json"
+    )
+
     importance = feature_importance_frame(first_model, second_model, list(features.columns), target_names[1])
     importance.to_csv(output_dir / "feature_importance.csv", index=False)
 
@@ -311,6 +344,10 @@ def main() -> int:
             config=config,
             metrics=metrics,
             manifest=manifest,
+            first_model_path=output_dir / f"model_{target_names[0]}.txt",
+            second_model_path=output_dir / f"model_{target_names[1]}.txt",
+            levels_path=levels_path,
+            input_example=serving_example(experiment_frame.loc[test_mask].head(2)),
         )
         write_json(output_dir / "mlflow.json", tracking_result)
 
@@ -343,8 +380,14 @@ def log_to_mlflow(
     config: dict[str, Any],
     metrics: dict[str, dict[str, float]],
     manifest: dict[str, Any],
+    first_model_path: Path,
+    second_model_path: Path,
+    levels_path: Path,
+    input_example: pd.DataFrame,
 ) -> dict[str, str]:
     import mlflow
+    from mlflow.models import infer_signature
+    from mlflow.tracking import MlflowClient
 
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI", str(config["tracking"]["tracking_uri"]))
     if tracking_uri.startswith("sqlite:///"):
@@ -352,6 +395,7 @@ def log_to_mlflow(
         database_path.parent.mkdir(parents=True, exist_ok=True)
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(str(config["tracking"]["experiment_name"]))
+
     with mlflow.start_run(run_name=run_name) as run:
         mlflow.set_tags(
             {
@@ -364,9 +408,108 @@ def log_to_mlflow(
         )
         mlflow.log_params(flatten_mapping(config))
         for split_name, split_metrics in metrics.items():
-            mlflow.log_metrics({f"{split_name}.{name}": value for name, value in split_metrics.items()})
+            mlflow.log_metrics(
+                {f"{split_name}.{name}": value for name, value in split_metrics.items()}
+            )
         mlflow.log_artifacts(str(output_dir))
-        return {"tracking_uri": tracking_uri, "run_id": run.info.run_id}
+
+        # Se instancia el paquete y se ejecuta una predicción de ejemplo, para
+        # que MLflow pueda inferir la firma del contrato (entrada -> salida).
+        package = SalaryRangeLightGBMPyFunc(
+            target_strategy=str(config["features"]["target_strategy"]),
+            include_company=bool(config["features"]["include_company"]),
+        )
+        import lightgbm as lgb
+
+        package.minimum_model = lgb.Booster(model_file=str(first_model_path))
+        package.second_model = lgb.Booster(model_file=str(second_model_path))
+        package.category_levels = json.loads(levels_path.read_text(encoding="utf-8"))
+        output_example = package.predict(None, input_example)
+
+        register_model = bool(config["tracking"].get("register_model", False))
+        model_name = str(config["tracking"].get("registered_model_name", "salary_predict_model"))
+
+        with TemporaryDirectory(prefix="mlflow-code-", dir=output_dir) as temp_dir:
+            code_path = build_mlflow_code_path(root, Path(temp_dir))
+            model_info = mlflow.pyfunc.log_model(
+                name="model",
+                python_model=SalaryRangeLightGBMPyFunc(
+                    target_strategy=str(config["features"]["target_strategy"]),
+                    include_company=bool(config["features"]["include_company"]),
+                ),
+                artifacts={
+                    "minimum_model": str(first_model_path),
+                    "second_model": str(second_model_path),
+                    "category_levels": str(levels_path),
+                },
+                code_paths=[str(code_path)],
+                signature=infer_signature(input_example, output_example),
+                input_example=input_example,
+                pip_requirements=[
+                    f"lightgbm=={importlib.metadata.version('lightgbm')}",
+                    f"mlflow=={importlib.metadata.version('mlflow')}",
+                    f"numpy=={importlib.metadata.version('numpy')}",
+                    f"pandas=={importlib.metadata.version('pandas')}",
+                    f"scikit-learn=={importlib.metadata.version('scikit-learn')}",
+                ],
+                registered_model_name=model_name if register_model else None,
+                metadata={
+                    "target_strategy": str(config["features"]["target_strategy"]),
+                    "include_company": bool(config["features"]["include_company"]),
+                    "validation_mae_mean_usd": metrics["validation"]["mae_mean_usd"],
+                },
+            )
+
+        result = {
+            "tracking_uri": tracking_uri,
+            "run_id": run.info.run_id,
+            "model_uri": model_info.model_uri,
+        }
+
+        registered_version = getattr(model_info, "registered_model_version", None)
+        if register_model and registered_version is None:
+            client = MlflowClient(tracking_uri=tracking_uri)
+            versions = client.search_model_versions(f"name='{model_name}'")
+            matching = [v for v in versions if v.run_id == run.info.run_id]
+            if matching:
+                registered_version = max(matching, key=lambda item: int(item.version)).version
+
+        if registered_version is not None:
+            result["registered_model_name"] = model_name
+            result["registered_model_version"] = str(registered_version)
+            alias = str(config["tracking"].get("model_alias", "")).strip()
+            if alias:
+                client = MlflowClient(tracking_uri=tracking_uri)
+                client.set_registered_model_alias(model_name, alias, str(registered_version))
+                result["model_alias"] = alias
+
+        return result
+
+
+def build_mlflow_code_path(root: Path, destination: Path) -> Path:
+    """Empaqueta el código mínimo que el modelo necesita para cargarse.
+
+    OJO: copia LOS DOS paquetes. El envoltorio de LightGBM importa
+    data.py, features.py y evaluation.py desde catboost_baseline; si sólo se
+    copia lightgbm_baseline, el modelo no carga en el contenedor de inferencia.
+    """
+    target_ml = destination / "ml"
+    target_ml.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(root / "ml" / "__init__.py", target_ml / "__init__.py")
+
+    source_catboost = root / "ml" / "catboost_baseline"
+    target_catboost = target_ml / "catboost_baseline"
+    target_catboost.mkdir(parents=True, exist_ok=True)
+    for name in ("__init__.py", "data.py", "evaluation.py", "features.py", "mlflow_model.py"):
+        shutil.copy2(source_catboost / name, target_catboost / name)
+
+    source_lightgbm = root / "ml" / "lightgbm_baseline"
+    target_lightgbm = target_ml / "lightgbm_baseline"
+    target_lightgbm.mkdir(parents=True, exist_ok=True)
+    for name in ("__init__.py", "model.py", "mlflow_model.py"):
+        shutil.copy2(source_lightgbm / name, target_lightgbm / name)
+
+    return target_ml
 
 
 def flatten_mapping(value: dict[str, Any], prefix: str = "") -> dict[str, str]:

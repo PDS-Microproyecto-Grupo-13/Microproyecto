@@ -12,7 +12,6 @@ features:
   target_strategy: minimum_width_log
 
 evaluation:
-  # Seen-vs-unseen-company generalization check (ml/lightgbm_baseline/evaluation.py).
   company_generalization:
     enabled: true
     minimum_size: 30
@@ -20,8 +19,8 @@ evaluation:
 model:
   objective: mae
   metric: mae
-  n_estimators: 500
-  learning_rate: 0.05
+  n_estimators: 1500
+  learning_rate: 0.02
   num_leaves: 127
   max_depth: 8
   min_child_samples: 30
