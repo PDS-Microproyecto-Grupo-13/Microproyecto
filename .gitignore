@@ -30,6 +30,10 @@ notebooks/abc/**
 mlflow.db
 mlartifacts/
 mlruns/
+ml/catboost_baseline/artifacts/
+ml/catboost_baseline/.mlflow/
+ml/lightgbm_baseline/artifacts/
+ml/lightgbm_baseline/.mlflow/
 
 # Node.js
 node_modules/
