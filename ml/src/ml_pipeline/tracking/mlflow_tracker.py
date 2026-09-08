@@ -54,9 +54,9 @@ def track(settings: Settings) -> str:
             if path.is_file():
                 mlflow.log_artifact(path, artifact_path="reports")
         # This is the only sklearn-flavor-specific boundary in tracking.
-        mlflow.sklearn.log_model(
+        model_info = mlflow.sklearn.log_model(
             sk_model=model,
-            artifact_path="model",
+            name="model",
             signature=signature,
             input_example=example,
             # MLflow 3 uses skops by default. This pipeline owns the fitted
@@ -65,6 +65,22 @@ def track(settings: Settings) -> str:
         )
         run_id = run.info.run_id
 
-    write_json(settings.path("artifacts/reports/tracking.json"), {"run_id": run_id})
-    LOGGER.info("track | result=success | run_id=%s", run_id)
+    tracking_result = {
+        "run_id": run_id,
+        "model_id": model_info.model_id,
+        "model_uri": model_info.model_uri,
+    }
+
+    write_json(
+        settings.path("artifacts/reports/tracking.json"),
+        tracking_result,
+    )
+
+    LOGGER.info(
+        "track | result=success | run_id=%s | model_id=%s | model_uri=%s",
+        run_id,
+        model_info.model_id,
+        model_info.model_uri,
+    )
+
     return run_id

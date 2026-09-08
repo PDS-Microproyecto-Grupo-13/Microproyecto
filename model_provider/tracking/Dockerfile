@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.lock.txt
 
 # Copy entrypoint script
 COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
 # Persistence directories for SQLite and Artifacts
 VOLUME ["/var/lib/mlflow/db", "/var/lib/mlflow/artifacts"]

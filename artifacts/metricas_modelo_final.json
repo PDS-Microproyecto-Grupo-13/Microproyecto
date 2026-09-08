@@ -1,0 +1,36 @@
+{
+  "configuration": "recibida_notebook_3",
+  "parameters": {
+    "objective": "regression_l1",
+    "verbosity": -1,
+    "subsample_freq": 1,
+    "subsample": 0.8,
+    "reg_lambda": 3.0,
+    "num_leaves": 95,
+    "n_estimators": 700,
+    "min_child_samples": 20,
+    "learning_rate": 0.06,
+    "colsample_bytree": 1.0
+  },
+  "test_metrics": {
+    "mae_min": 22421.612448226548,
+    "rmse_min": 40309.39396015575,
+    "mape_min": 0.25895726392100166,
+    "r2_min": 0.5699880003427842,
+    "mae_max": 32070.180351973042,
+    "rmse_max": 54839.23734163291,
+    "mape_max": 0.24249905709809552,
+    "r2_max": 0.623503933471385,
+    "mae_promedio": 27245.896400099795,
+    "mae_amplitud": 21605.277013138537,
+    "cobertura_intervalo": 0.11955855303494789,
+    "incoherencia_raw": 0.006499080318822808,
+    "prediccion_no_positiva": 0.0
+  },
+  "quality_checks": {
+    "valores_finitos": true,
+    "valores_positivos": true,
+    "rangos_ordenados": true,
+    "dentro_limites_operativos": true
+  }
+}
