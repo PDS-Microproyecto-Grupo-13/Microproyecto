@@ -442,4 +442,43 @@ def test_reproducible_pipeline_collect_validate_and_preprocess(synthetic_foorill
     assert (smoke_preds > 0).all()
     assert (smoke_preds[:, 0] <= smoke_preds[:, 1]).all()
 
+    # 6. Execute evaluate
+    from ml_pipeline.modeling.evaluate import evaluate
+
+    eval_rep = evaluate(settings)
+
+    # Check that all 7 reports are created
+    metrics_path = synthetic_foorilla_env / "artifacts/reports/metrics.json"
+    candidate_path = synthetic_foorilla_env / "artifacts/reports/candidate.json"
+    manifest_path = synthetic_foorilla_env / "artifacts/reports/experiment_manifest.json"
+    audit_seg_path = synthetic_foorilla_env / "artifacts/reports/audit_segments.json"
+    audit_nov_path = synthetic_foorilla_env / "artifacts/reports/audit_novelty.json"
+    audit_sens_path = synthetic_foorilla_env / "artifacts/reports/audit_sensitivity.json"
+    feat_imp_path = synthetic_foorilla_env / "artifacts/reports/feature_importance.json"
+
+    assert metrics_path.is_file()
+    assert candidate_path.is_file()
+    assert manifest_path.is_file()
+    assert audit_seg_path.is_file()
+    assert audit_nov_path.is_file()
+    assert audit_sens_path.is_file()
+    assert feat_imp_path.is_file()
+
+    metrics_data = read_json(metrics_path)
+    assert metrics_data["mae_promedio"] > 0.0
+    assert metrics_data["quality_checks"]["valores_finitos"] is True
+    assert metrics_data["quality_checks"]["valores_positivos"] is True
+    assert metrics_data["quality_checks"]["rangos_ordenados"] is True
+    assert metrics_data["quality_checks"]["dentro_limites_operativos"] is True
+
+    candidate_data = read_json(candidate_path)
+    assert candidate_data["eligible"] is True
+    assert candidate_data["test_evaluation"]["test_rows"] == len(test_part_df)
+    assert candidate_data["training"]["final_training_rows"] == len(train_df) + len(val_part_df)
+
+    manifest_data = read_json(manifest_path)
+    assert "git_commit" in manifest_data["lineage"]
+    assert "dataset_fingerprint" in manifest_data
+
+
 

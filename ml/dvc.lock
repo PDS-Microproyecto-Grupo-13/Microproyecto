@@ -215,3 +215,102 @@ stages:
       hash: md5
       md5: da191e155767d283b35863abff329e28
       size: 5222261
+  evaluate:
+    cmd: python -m ml_pipeline evaluate
+    deps:
+    - path: artifacts/reports/qualification.json
+      hash: md5
+      md5: 258db48ec5f043317ebbe0704827272b
+      size: 1310
+    - path: artifacts/reports/training.json
+      hash: md5
+      md5: 2269a76a2fc38be5c780518254e5df38
+      size: 821
+    - path: artifacts/work/model/model.joblib
+      hash: md5
+      md5: da191e155767d283b35863abff329e28
+      size: 5222261
+    - path: data/processed/test.parquet
+      hash: md5
+      md5: 871d6c56e235f04d52da853c58d87d1e
+      size: 301958
+    - path: data/processed/train.parquet
+      hash: md5
+      md5: 574a131811d9a168326c5dbf8a6b648b
+      size: 1224727
+    - path: data/processed/validation.parquet
+      hash: md5
+      md5: 9758c8fb268b8a36fe2ce66d3945de2f
+      size: 298608
+    - path: src/ml_pipeline/features.py
+      hash: md5
+      md5: bf30fe9e9db01fffa1bb652ed15cd73e
+      size: 5544
+    - path: src/ml_pipeline/modeling/evaluate.py
+      hash: md5
+      md5: 1431ff99a4110fcd819f2f3dbdb86d82
+      size: 17360
+    - path: src/ml_pipeline/modeling/qualify.py
+      hash: md5
+      md5: e695137e6fdf47e9294561de9795699e
+      size: 11982
+    - path: src/ml_pipeline/modeling/train.py
+      hash: md5
+      md5: 3da071046fdcd2d0d0573d34a18e7df8
+      size: 7751
+    params:
+      params.yaml:
+        evaluation:
+          primary_metric: mae_promedio
+        model:
+          algorithm: lightgbm
+          random_state: 42
+          lightgbm:
+            objective: regression_l1
+            verbosity: -1
+            subsample_freq: 1
+            subsample: 0.8
+            reg_lambda: 3.0
+            num_leaves: 95
+            n_estimators: 700
+            min_child_samples: 20
+            learning_rate: 0.06
+            colsample_bytree: 1.0
+            random_state: 42
+            n_jobs: -1
+          logistic_regression:
+            C: 1.0
+            max_iter: 1000
+          random_forest:
+            n_estimators: 200
+            max_depth: 10
+            min_samples_leaf: 1
+    outs:
+    - path: artifacts/reports/audit_novelty.json
+      hash: md5
+      md5: 6a9d015ea76285507cb74ebd897ebf43
+      size: 733
+    - path: artifacts/reports/audit_segments.json
+      hash: md5
+      md5: 461a64f425d4844af423356871bac2f1
+      size: 3699
+    - path: artifacts/reports/audit_sensitivity.json
+      hash: md5
+      md5: 5d93f36620a94c7e65f8c2203dac8f7b
+      size: 3271
+    - path: artifacts/reports/candidate.json
+      hash: md5
+      md5: 3989fc1e4f8469cceaef2cf6a677fc91
+      size: 3254
+    - path: artifacts/reports/experiment_manifest.json
+      hash: md5
+      md5: 5c6a5d1ce52f04feb6088b5d290c4e15
+      size: 4302
+    - path: artifacts/reports/feature_importance.json
+      hash: md5
+      md5: a32222992e0bea16bdc7c88634c5e639
+      size: 1823
+    - path: artifacts/reports/metrics.json
+      hash: md5
+      md5: 883bdcbac3dc810dce6cb66981765864
+      size: 753

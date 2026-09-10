@@ -34,12 +34,12 @@ cp .env.example .env
 `requirements.lock.txt` instala también el paquete local en modo editable, por lo
 que la CLI queda disponible sin configurar `PYTHONPATH`.
 
-## Pipeline reproducible (Fase 4: Ingesta, Validación, Preprocesamiento, Calificación y Entrenamiento)
+## Pipeline reproducible (Fase 5: Ingesta, Validación, Preprocesamiento, Calificación, Entrenamiento y Evaluación Final sobre TEST)
 
-Actualmente el pipeline DVC gobierna de forma reproducible las etapas de ingesta, validación, preprocesamiento con split temporal, calificación y entrenamiento definitivo del modelo salarial:
+Actualmente el pipeline DVC gobierna de forma reproducible las 6 etapas completas del ciclo de modelado salarial:
 
 ```text
-collect -> validate -> preprocess -> qualify -> train
+collect -> validate -> preprocess -> qualify -> train -> evaluate
 ```
 
 ```bash
@@ -48,6 +48,7 @@ python -m ml_pipeline validate
 python -m ml_pipeline preprocess
 python -m ml_pipeline qualify
 python -m ml_pipeline train
+python -m ml_pipeline evaluate
 # O mediante DVC:
 dvc repro
 ```
@@ -70,14 +71,22 @@ dvc repro
   - `artifacts/reports/qualification.json`: métricas del baseline (DummyRegressor), validación LightGBM, retrotest temporal en train (80/20) y verificación de criterios (`improvement_vs_baseline >= 0.10`, `abs(temporal_gap) <= 0.25`).
   - `artifacts/reports/uncertainty_calibration.json`: margen de incertidumbre conjunto sobre validación (`quantile(joint_error, 0.80, method="higher")`).
 - **Modelo Definitivo y Reporte de Entrenamiento**:
-  - `artifacts/work/model/model.joblib`: bundle serializado con modelos duales (`pipeline_min`, `pipeline_max`), límites operativos, margen de incertidumbre calibrado en Fase 3 y contrato de 24 features.
-  - `artifacts/reports/training.json`: reporte determinista con metadatos del ajuste definitivo sobre 46,208 filas (`train + validation`), sin marcas de tiempo dinámicas.
-- **Manifiestos y reportes**:
+  - `artifacts/work/model/model.joblib`: bundle serializado con modelos duales (`pipeline_min`, `pipeline_max`), límites operativos, margen de incertidumbre calibrado en Fase 3 y contrato de 24 features entrenado sobre 46,208 filas (`train + validation`).
+  - `artifacts/reports/training.json`: reporte determinista con metadatos del ajuste definitivo sin marcas de tiempo dinámicas.
+- **Evaluación Final sobre TEST Ciego y Auditorías Diagnósticas**:
+  - `artifacts/reports/metrics.json`: métricas de regresión sobre `test.parquet` (8,155 filas), margen y cobertura de incertidumbre (78.93%), invariantes de calidad y diagnósticos.
+  - `artifacts/reports/candidate.json`: preserva la calificación aprobada (`eligible: true`), metadatos de entrenamiento y resultado final de test.
+  - `artifacts/reports/experiment_manifest.json`: manifiesto integral con lineage Git/DVC, hiperparámetros efectivos y métricas de test.
+  - `artifacts/reports/audit_segments.json`: desglose de desempeño por segmentos (`country`, `experience_level`, `years_group`, `work_mode`).
+  - `artifacts/reports/audit_novelty.json`: evaluación de error en categorías conocidas vs no observadas (`title`, `company`, `country`).
+  - `artifacts/reports/audit_sensitivity.json`: auditorías de sensibilidad (perfil sintético no observado, monotonicidad en progresión de experiencia, escenarios geográficos y perfiles de habilidades).
+  - `artifacts/reports/feature_importance.json`: ranking de importancia promedio entre los dos estimadores LightGBM.
+- **Manifiestos y reportes de datos**:
   - `artifacts/reports/data_manifest.json`: huella SHA-256 por snapshot y `dataset_fingerprint`.
   - `artifacts/reports/validation.json`: conteos por `target_source` y estadísticas de validación.
   - `artifacts/reports/preprocess.json`: resumen de splits, rangos de fechas, contrato de 24 features y metadata de reproducibilidad.
 
-*Nota*: `test.parquet` permanece **estrictamente desacoplado** de las etapas `qualify` y `train` para garantizar cero fuga de datos. La evaluación final sobre la partición `test.parquet`, el registro del candidato y el tracking en MLflow corresponden a la Fase 5.
+*Nota de gobernanza*: La partición `test.parquet` fue evaluada por primera y única vez en `evaluate`, sin retroalimentación, sin recalibración y sin ajuste de hiperparámetros. Las fases subsiguientes abordarán el registro del candidato y el tracking en MLflow.
 
 ## Tracking y registro
 

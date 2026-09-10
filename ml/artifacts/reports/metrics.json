@@ -1,6 +1,28 @@
 {
-  "accuracy": 0.9824561403508771,
-  "f1": 0.9861111111111112,
-  "precision": 0.9861111111111112,
-  "recall": 0.9861111111111112
+  "cobertura_intervalo": 0.113918,
+  "diagnostic_checks": {
+    "nuevo_perfil_valido": true,
+    "progresion_experiencia_no_decreciente": true
+  },
+  "incoherencia_raw": 0.020478,
+  "mae_amplitud": 21127.059368,
+  "mae_max": 31675.403746,
+  "mae_min": 22487.039193,
+  "mae_promedio": 27081.221469,
+  "mape_max": 0.238765,
+  "mape_min": 0.265057,
+  "prediccion_no_positiva": 0.0,
+  "quality_checks": {
+    "dentro_limites_operativos": true,
+    "rangos_ordenados": true,
+    "valores_finitos": true,
+    "valores_positivos": true
+  },
+  "r2_max": 0.628212,
+  "r2_min": 0.572696,
+  "rmse_max": 54490.051851,
+  "rmse_min": 40174.003587,
+  "uncertainty_margin": 50927.2876,
+  "uncertainty_nominal_coverage": 0.8,
+  "uncertainty_test_coverage": 0.789332
 }

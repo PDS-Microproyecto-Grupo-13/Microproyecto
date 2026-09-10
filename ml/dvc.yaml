@@ -71,4 +71,37 @@ stages:
           cache: false
       - artifacts/work/model/model.joblib
 
+  evaluate:
+    cmd: python -m ml_pipeline evaluate
+    deps:
+      - artifacts/reports/qualification.json
+      - artifacts/reports/training.json
+      - artifacts/work/model/model.joblib
+      - data/processed/test.parquet
+      - data/processed/train.parquet
+      - data/processed/validation.parquet
+      - src/ml_pipeline/features.py
+      - src/ml_pipeline/modeling/evaluate.py
+      - src/ml_pipeline/modeling/qualify.py
+      - src/ml_pipeline/modeling/train.py
+    params:
+      - evaluation
+      - model
+    outs:
+      - artifacts/reports/audit_novelty.json:
+          cache: false
+      - artifacts/reports/audit_segments.json:
+          cache: false
+      - artifacts/reports/audit_sensitivity.json:
+          cache: false
+      - artifacts/reports/candidate.json:
+          cache: false
+      - artifacts/reports/experiment_manifest.json:
+          cache: false
+      - artifacts/reports/feature_importance.json:
+          cache: false
+      - artifacts/reports/metrics.json:
+          cache: false
+
+
 

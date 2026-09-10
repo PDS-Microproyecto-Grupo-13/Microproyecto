@@ -1,0 +1,44 @@
+{
+  "company": [
+    {
+      "estado_categoria": "conocida",
+      "mae": 24125.32,
+      "n": 7083,
+      "sesgo": -3273.7
+    },
+    {
+      "estado_categoria": "nueva",
+      "mae": 33617.46,
+      "n": 1072,
+      "sesgo": -258.72
+    }
+  ],
+  "country": [
+    {
+      "estado_categoria": "conocida",
+      "mae": 25372.9,
+      "n": 8127,
+      "sesgo": -2941.66
+    },
+    {
+      "estado_categoria": "nueva",
+      "mae": 25429.97,
+      "n": 28,
+      "sesgo": 15782.88
+    }
+  ],
+  "title": [
+    {
+      "estado_categoria": "conocida",
+      "mae": 20866.17,
+      "n": 3766,
+      "sesgo": -186.47
+    },
+    {
+      "estado_categoria": "nueva",
+      "mae": 29240.28,
+      "n": 4389,
+      "sesgo": -5186.31
+    }
+  ]
+}

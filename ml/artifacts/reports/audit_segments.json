@@ -1,0 +1,170 @@
+{
+  "country": [
+    {
+      "country": "United States",
+      "mae": 23739.36,
+      "mediana_observada": 167950.0,
+      "mediana_predicha": 167146.54,
+      "n": 6467,
+      "sesgo": -2303.06
+    },
+    {
+      "country": "Canada",
+      "mae": 22090.67,
+      "mediana_observada": 105206.0,
+      "mediana_predicha": 106866.67,
+      "n": 398,
+      "sesgo": -1135.78
+    },
+    {
+      "country": "India",
+      "mae": 31987.35,
+      "mediana_observada": 36382.0,
+      "mediana_predicha": 37489.18,
+      "n": 157,
+      "sesgo": -9066.01
+    },
+    {
+      "country": "desconocido",
+      "mae": 30338.94,
+      "mediana_observada": 149177.0,
+      "mediana_predicha": 150957.78,
+      "n": 131,
+      "sesgo": 2086.91
+    },
+    {
+      "country": "Poland",
+      "mae": 20829.64,
+      "mediana_observada": 80000.0,
+      "mediana_predicha": 77618.1,
+      "n": 109,
+      "sesgo": -2745.06
+    },
+    {
+      "country": "Cuba",
+      "mae": 22127.92,
+      "mediana_observada": 235750.0,
+      "mediana_predicha": 250613.23,
+      "n": 99,
+      "sesgo": 6363.99
+    },
+    {
+      "country": "United Kingdom",
+      "mae": 28609.16,
+      "mediana_observada": 102857.75,
+      "mediana_predicha": 101022.41,
+      "n": 72,
+      "sesgo": -10780.55
+    },
+    {
+      "country": "Costa Rica",
+      "mae": 91042.66,
+      "mediana_observada": 222400.0,
+      "mediana_predicha": 126996.17,
+      "n": 64,
+      "sesgo": -91042.66
+    }
+  ],
+  "experience_level": [
+    {
+      "experience_level": "SE",
+      "mae": 25206.28,
+      "mediana_observada": 172500.0,
+      "mediana_predicha": 170435.31,
+      "n": 5144,
+      "sesgo": -2926.27
+    },
+    {
+      "experience_level": "MI",
+      "mae": 24540.8,
+      "mediana_observada": 132000.0,
+      "mediana_predicha": 136425.32,
+      "n": 2417,
+      "sesgo": -1773.52
+    },
+    {
+      "experience_level": "EN",
+      "mae": 28092.1,
+      "mediana_observada": 110000.0,
+      "mediana_predicha": 106043.56,
+      "n": 384,
+      "sesgo": -9579.96
+    },
+    {
+      "experience_level": "EX",
+      "mae": 33043.75,
+      "mediana_observada": 200000.0,
+      "mediana_predicha": 208814.84,
+      "n": 200,
+      "sesgo": 180.36
+    }
+  ],
+  "work_mode": [
+    {
+      "mae": 26279.21,
+      "mediana_observada": 168000.0,
+      "mediana_predicha": 165388.03,
+      "n": 5455,
+      "sesgo": -5039.58,
+      "work_mode": "presencial"
+    },
+    {
+      "mae": 22804.66,
+      "mediana_observada": 125000.0,
+      "mediana_predicha": 136631.36,
+      "n": 1616,
+      "sesgo": 627.3,
+      "work_mode": "remoto"
+    },
+    {
+      "mae": 26688.5,
+      "mediana_observada": 140000.0,
+      "mediana_predicha": 150459.35,
+      "n": 763,
+      "sesgo": 4630.93,
+      "work_mode": "remoto_sin_detalle"
+    },
+    {
+      "mae": 19539.4,
+      "mediana_observada": 184950.0,
+      "mediana_predicha": 173020.69,
+      "n": 312,
+      "sesgo": -2417.42,
+      "work_mode": "h\u00edbrido"
+    }
+  ],
+  "years_group": [
+    {
+      "mae": 24874.68,
+      "mediana_observada": 147925.0,
+      "mediana_predicha": 150826.14,
+      "n": 3762,
+      "sesgo": -1606.15,
+      "years_group": "3-5"
+    },
+    {
+      "mae": 25594.78,
+      "mediana_observada": 179225.0,
+      "mediana_predicha": 176292.83,
+      "n": 2886,
+      "sesgo": -3490.61,
+      "years_group": "6-10"
+    },
+    {
+      "mae": 25101.48,
+      "mediana_observada": 126750.0,
+      "mediana_predicha": 120271.49,
+      "n": 1213,
+      "sesgo": -4294.4,
+      "years_group": "0-2"
+    },
+    {
+      "mae": 30695.22,
+      "mediana_observada": 225000.0,
+      "mediana_predicha": 211100.06,
+      "n": 294,
+      "sesgo": -7277.6,
+      "years_group": "11+"
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "ranking": [
+    {
+      "importancia": 14189.0,
+      "variable": "company"
+    },
+    {
+      "importancia": 14084.5,
+      "variable": "title"
+    },
+    {
+      "importancia": 7503.5,
+      "variable": "published_month"
+    },
+    {
+      "importancia": 6098.0,
+      "variable": "experience_years"
+    },
+    {
+      "importancia": 4845.0,
+      "variable": "experience_level"
+    },
+    {
+      "importancia": 3987.5,
+      "variable": "country"
+    },
+    {
+      "importancia": 3439.0,
+      "variable": "work_mode"
+    },
+    {
+      "importancia": 1896.0,
+      "variable": "region"
+    },
+    {
+      "importancia": 1127.0,
+      "variable": "skill_machine_learning"
+    },
+    {
+      "importancia": 1116.0,
+      "variable": "skill_sql"
+    },
+    {
+      "importancia": 956.0,
+      "variable": "skill_python"
+    },
+    {
+      "importancia": 901.5,
+      "variable": "published_year"
+    },
+    {
+      "importancia": 760.5,
+      "variable": "skill_aws"
+    },
+    {
+      "importancia": 756.5,
+      "variable": "skill_spark"
+    },
+    {
+      "importancia": 686.5,
+      "variable": "skill_azure"
+    },
+    {
+      "importancia": 531.5,
+      "variable": "skill_gcp"
+    },
+    {
+      "importancia": 518.0,
+      "variable": "skill_kubernetes"
+    },
+    {
+      "importancia": 494.0,
+      "variable": "skill_docker"
+    },
+    {
+      "importancia": 487.0,
+      "variable": "skill_pytorch"
+    },
+    {
+      "importancia": 392.0,
+      "variable": "skill_tensorflow"
+    },
+    {
+      "importancia": 355.5,
+      "variable": "company_is_agency"
+    },
+    {
+      "importancia": 345.0,
+      "variable": "skill_power_bi"
+    },
+    {
+      "importancia": 330.5,
+      "variable": "skill_tableau"
+    },
+    {
+      "importancia": 0.0,
+      "variable": "experience_years_missing"
+    }
+  ]
+}

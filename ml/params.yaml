@@ -38,5 +38,5 @@ qualification:
   uncertainty_quantile: 0.80
 
 evaluation:
-  primary_metric: f1
-  minimum_score: 0.80
+  primary_metric: mae_promedio
+

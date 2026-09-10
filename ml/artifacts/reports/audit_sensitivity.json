@@ -1,0 +1,136 @@
+{
+  "experience_progression": {
+    "progresion_no_decreciente": true,
+    "scenarios": [
+      {
+        "a\u00f1os": 1.0,
+        "nivel": "junior",
+        "pred_y1": 112903.35,
+        "pred_y2": 158121.84,
+        "progresion_respecto_anterior": 0.0,
+        "punto_medio": 135512.59
+      },
+      {
+        "a\u00f1os": 4.0,
+        "nivel": "mid",
+        "pred_y1": 117139.08,
+        "pred_y2": 177525.83,
+        "progresion_respecto_anterior": 11819.86,
+        "punto_medio": 147332.45
+      },
+      {
+        "a\u00f1os": 8.0,
+        "nivel": "senior",
+        "pred_y1": 136454.9,
+        "pred_y2": 204207.02,
+        "progresion_respecto_anterior": 22998.51,
+        "punto_medio": 170330.96
+      },
+      {
+        "a\u00f1os": 12.0,
+        "nivel": "lead",
+        "pred_y1": 175742.67,
+        "pred_y2": 236576.65,
+        "progresion_respecto_anterior": 35828.7,
+        "punto_medio": 206159.66
+      }
+    ]
+  },
+  "geography_scenarios": [
+    {
+      "country": "United States",
+      "mediana_observada": 170800.0,
+      "n_entrenamiento": 40947,
+      "pred_y1": 125885.93,
+      "pred_y2": 180406.66,
+      "punto_medio_predicho": 153146.29
+    },
+    {
+      "country": "Canada",
+      "mediana_observada": 102107.5,
+      "n_entrenamiento": 1808,
+      "pred_y1": 97168.08,
+      "pred_y2": 145134.78,
+      "punto_medio_predicho": 121151.43
+    },
+    {
+      "country": "desconocido",
+      "mediana_observada": 145000.0,
+      "n_entrenamiento": 1096,
+      "pred_y1": 122032.89,
+      "pred_y2": 172726.29,
+      "punto_medio_predicho": 147379.59
+    },
+    {
+      "country": "United Kingdom",
+      "mediana_observada": 94869.5,
+      "n_entrenamiento": 521,
+      "pred_y1": 103139.38,
+      "pred_y2": 147583.67,
+      "punto_medio_predicho": 125361.52
+    },
+    {
+      "country": "Germany",
+      "mediana_observada": 120000.0,
+      "n_entrenamiento": 196,
+      "pred_y1": 109088.46,
+      "pred_y2": 162259.77,
+      "punto_medio_predicho": 135674.12
+    },
+    {
+      "country": "India",
+      "mediana_observada": 36542.5,
+      "n_entrenamiento": 193,
+      "pred_y1": 63236.6,
+      "pred_y2": 104632.18,
+      "punto_medio_predicho": 83934.39
+    },
+    {
+      "country": "Poland",
+      "mediana_observada": 73000.0,
+      "n_entrenamiento": 116,
+      "pred_y1": 75439.83,
+      "pred_y2": 121834.88,
+      "punto_medio_predicho": 98637.36
+    },
+    {
+      "country": "Lithuania",
+      "mediana_observada": 66547.5,
+      "n_entrenamiento": 107,
+      "pred_y1": 80186.59,
+      "pred_y2": 126808.41,
+      "punto_medio_predicho": 103497.5
+    }
+  ],
+  "skill_scenarios": [
+    {
+      "escenario": "sin_habilidades",
+      "pred_y1": 121528.47,
+      "pred_y2": 175442.92,
+      "punto_medio": 148485.7
+    },
+    {
+      "escenario": "python_sql",
+      "pred_y1": 131635.48,
+      "pred_y2": 185158.58,
+      "punto_medio": 158397.03
+    },
+    {
+      "escenario": "datos_nube",
+      "pred_y1": 132124.68,
+      "pred_y2": 179581.41,
+      "punto_medio": 155853.05
+    },
+    {
+      "escenario": "mlops",
+      "pred_y1": 137445.67,
+      "pred_y2": 195407.6,
+      "punto_medio": 166426.63
+    }
+  ],
+  "unobserved_profile": {
+    "pred_y1": 107415.95,
+    "pred_y2": 157454.32,
+    "valido": true
+  }
+}
