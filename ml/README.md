@@ -34,12 +34,12 @@ cp .env.example .env
 `requirements.lock.txt` instala también el paquete local en modo editable, por lo
 que la CLI queda disponible sin configurar `PYTHONPATH`.
 
-## Pipeline reproducible (Fase 3: Ingesta, Validación, Preprocesamiento y Calificación)
+## Pipeline reproducible (Fase 4: Ingesta, Validación, Preprocesamiento, Calificación y Entrenamiento)
 
-Actualmente el pipeline DVC gobierna de forma reproducible las etapas de ingesta, validación, preprocesamiento con split temporal y calificación del modelo salarial:
+Actualmente el pipeline DVC gobierna de forma reproducible las etapas de ingesta, validación, preprocesamiento con split temporal, calificación y entrenamiento definitivo del modelo salarial:
 
 ```text
-collect -> validate -> preprocess -> qualify
+collect -> validate -> preprocess -> qualify -> train
 ```
 
 ```bash
@@ -47,6 +47,7 @@ python -m ml_pipeline collect
 python -m ml_pipeline validate
 python -m ml_pipeline preprocess
 python -m ml_pipeline qualify
+python -m ml_pipeline train
 # O mediante DVC:
 dvc repro
 ```
@@ -68,12 +69,15 @@ dvc repro
 - **Calificación y Calibración de Incertidumbre**:
   - `artifacts/reports/qualification.json`: métricas del baseline (DummyRegressor), validación LightGBM, retrotest temporal en train (80/20) y verificación de criterios (`improvement_vs_baseline >= 0.10`, `abs(temporal_gap) <= 0.25`).
   - `artifacts/reports/uncertainty_calibration.json`: margen de incertidumbre conjunto sobre validación (`quantile(joint_error, 0.80, method="higher")`).
+- **Modelo Definitivo y Reporte de Entrenamiento**:
+  - `artifacts/work/model/model.joblib`: bundle serializado con modelos duales (`pipeline_min`, `pipeline_max`), límites operativos, margen de incertidumbre calibrado en Fase 3 y contrato de 24 features.
+  - `artifacts/reports/training.json`: reporte determinista con metadatos del ajuste definitivo sobre 46,208 filas (`train + validation`), sin marcas de tiempo dinámicas.
 - **Manifiestos y reportes**:
   - `artifacts/reports/data_manifest.json`: huella SHA-256 por snapshot y `dataset_fingerprint`.
   - `artifacts/reports/validation.json`: conteos por `target_source` y estadísticas de validación.
   - `artifacts/reports/preprocess.json`: resumen de splits, rangos de fechas, contrato de 24 features y metadata de reproducibilidad.
 
-*Nota*: `test.parquet` permanece estrictamente desacoplado de la etapa `qualify` para evitar data leakage. El entrenamiento del modelo final y su evaluación sobre test corresponden a la Fase 4.
+*Nota*: `test.parquet` permanece **estrictamente desacoplado** de las etapas `qualify` y `train` para garantizar cero fuga de datos. La evaluación final sobre la partición `test.parquet`, el registro del candidato y el tracking en MLflow corresponden a la Fase 5.
 
 ## Tracking y registro
 

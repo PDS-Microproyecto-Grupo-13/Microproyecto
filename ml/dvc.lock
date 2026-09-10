@@ -146,3 +146,72 @@ stages:
       hash: md5
       md5: 3ac0347c3b245f0f700159abf41e833c
       size: 249
+  train:
+    cmd: python -m ml_pipeline train
+    deps:
+    - path: artifacts/reports/qualification.json
+      hash: md5
+      md5: 258db48ec5f043317ebbe0704827272b
+      size: 1310
+    - path: artifacts/reports/train_limits.json
+      hash: md5
+      md5: 5fae090b7fce9a5cdc356b20bde9bcd8
+      size: 140
+    - path: artifacts/reports/uncertainty_calibration.json
+      hash: md5
+      md5: 3ac0347c3b245f0f700159abf41e833c
+      size: 249
+    - path: data/processed/train.parquet
+      hash: md5
+      md5: 574a131811d9a168326c5dbf8a6b648b
+      size: 1224727
+    - path: data/processed/validation.parquet
+      hash: md5
+      md5: 9758c8fb268b8a36fe2ce66d3945de2f
+      size: 298608
+    - path: src/ml_pipeline/features.py
+      hash: md5
+      md5: bf30fe9e9db01fffa1bb652ed15cd73e
+      size: 5544
+    - path: src/ml_pipeline/modeling/qualify.py
+      hash: md5
+      md5: e695137e6fdf47e9294561de9795699e
+      size: 11982
+    - path: src/ml_pipeline/modeling/train.py
+      hash: md5
+      md5: 3da071046fdcd2d0d0573d34a18e7df8
+      size: 7751
+    params:
+      params.yaml:
+        model:
+          algorithm: lightgbm
+          random_state: 42
+          lightgbm:
+            objective: regression_l1
+            verbosity: -1
+            subsample_freq: 1
+            subsample: 0.8
+            reg_lambda: 3.0
+            num_leaves: 95
+            n_estimators: 700
+            min_child_samples: 20
+            learning_rate: 0.06
+            colsample_bytree: 1.0
+            random_state: 42
+            n_jobs: -1
+          logistic_regression:
+            C: 1.0
+            max_iter: 1000
+          random_forest:
+            n_estimators: 200
+            max_depth: 10
+            min_samples_leaf: 1
+    outs:
+    - path: artifacts/reports/training.json
+      hash: md5
+      md5: 2269a76a2fc38be5c780518254e5df38
+      size: 821
+    - path: artifacts/work/model/model.joblib
+      hash: md5
+      md5: da191e155767d283b35863abff329e28
+      size: 5222261

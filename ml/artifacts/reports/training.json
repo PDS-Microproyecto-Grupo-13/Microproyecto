@@ -1,0 +1,36 @@
+{
+  "algorithm": "lightgbm",
+  "configuration": {
+    "colsample_bytree": 1.0,
+    "learning_rate": 0.06,
+    "min_child_samples": 20,
+    "n_estimators": 700,
+    "n_jobs": -1,
+    "num_leaves": 95,
+    "objective": "regression_l1",
+    "random_state": 42,
+    "reg_lambda": 3.0,
+    "subsample": 0.8,
+    "subsample_freq": 1,
+    "verbosity": -1
+  },
+  "dataset_fingerprint": "541f47bf1bb49a6a0e5947d49dade61c444e74cd5350cfbb68a185506cd957ed",
+  "feature_count": 24,
+  "final_training_rows": 46208,
+  "qualification": {
+    "eligible": true
+  },
+  "random_state": 42,
+  "targets": [
+    "y_min_usd",
+    "y_max_usd"
+  ],
+  "train_limits": {
+    "ceiling": 720000.0,
+    "floor": 10935.571999999996,
+    "source_split": "train"
+  },
+  "train_rows": 38054,
+  "uncertainty_margin": 50927.2876,
+  "validation_rows": 8154
+}

@@ -53,3 +53,22 @@ stages:
       - artifacts/reports/uncertainty_calibration.json:
           cache: false
 
+  train:
+    cmd: python -m ml_pipeline train
+    deps:
+      - artifacts/reports/qualification.json
+      - artifacts/reports/train_limits.json
+      - artifacts/reports/uncertainty_calibration.json
+      - data/processed/train.parquet
+      - data/processed/validation.parquet
+      - src/ml_pipeline/features.py
+      - src/ml_pipeline/modeling/qualify.py
+      - src/ml_pipeline/modeling/train.py
+    params:
+      - model
+    outs:
+      - artifacts/reports/training.json:
+          cache: false
+      - artifacts/work/model/model.joblib
+
+

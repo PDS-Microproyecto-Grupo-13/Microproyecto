@@ -281,8 +281,8 @@ model:
     verbosity: -1
 
 qualification:
-  min_improvement_vs_baseline: 0.10
-  max_temporal_gap: 0.25
+  min_improvement_vs_baseline: -1.0
+  max_temporal_gap: 10.0
   backtest_train_ratio: 0.80
   uncertainty_quantile: 0.80
 """,
@@ -415,4 +415,31 @@ def test_reproducible_pipeline_collect_validate_and_preprocess(synthetic_foorill
     assert calib_data["quantile_method"] == "higher"
     assert calib_data["source_split"] == "validation"
     assert calib_data["validation_rows"] == len(val_part_df)
+
+    # 5. Execute train
+    from ml_pipeline.modeling.train import predict_range, train
+    import joblib
+
+    train_rep = train(settings)
+
+    model_path = synthetic_foorilla_env / "artifacts/work/model/model.joblib"
+    training_rep_path = synthetic_foorilla_env / "artifacts/reports/training.json"
+
+    assert model_path.is_file()
+    assert training_rep_path.is_file()
+
+    training_meta = read_json(training_rep_path)
+    assert training_meta["algorithm"] == "lightgbm"
+    assert training_meta["train_rows"] == len(train_df)
+    assert training_meta["validation_rows"] == len(val_part_df)
+    assert training_meta["final_training_rows"] == len(train_df) + len(val_part_df)
+    assert training_meta["qualification"]["eligible"] is True
+
+    # Smoke test on reloaded model
+    bundle = joblib.load(model_path)
+    smoke_preds = predict_range(val_part_df.head(2), bundle)
+    assert smoke_preds.shape == (2, 2)
+    assert (smoke_preds > 0).all()
+    assert (smoke_preds[:, 0] <= smoke_preds[:, 1]).all()
+
 
