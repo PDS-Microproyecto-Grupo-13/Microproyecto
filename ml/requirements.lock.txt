@@ -8,3 +8,4 @@ dvc==3.67.1
 mlflow==3.15.1
 pytest==8.4.2
 pyarrow==25.0.1
+lightgbm==4.7.0

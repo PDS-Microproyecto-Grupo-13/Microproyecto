@@ -1,0 +1,8 @@
+{
+  "dataset_fingerprint": "541f47bf1bb49a6a0e5947d49dade61c444e74cd5350cfbb68a185506cd957ed",
+  "nominal_coverage": 0.8,
+  "quantile_method": "higher",
+  "source_split": "validation",
+  "uncertainty_margin": 50927.2876,
+  "validation_rows": 8154
+}

@@ -243,6 +243,23 @@ def synthetic_foorilla_env(tmp_path: Path) -> Path:
             "salary_max_usd": 112000,
         },
     ])
+    extra_rows = [
+        {
+            "id": i,
+            "apply_url": f"https://company-extra-{i}.com/job{i}",
+            "company": f"Company {chr(65 + (i % 20))}",
+            "title": "Engineer",
+            "location": "Remote",
+            "published": f"2026-08-{25 + ((i - 16) // 5):02d}T10:00:00Z",
+            "company_is_agency": False,
+            "salary_min": 60000 + (i * 500),
+            "salary_max": 90000 + (i * 500),
+            "salary_min_usd": 60000 + (i * 500),
+            "salary_max_usd": 90000 + (i * 500),
+        }
+        for i in range(16, 46)
+    ]
+    snap2 = pd.concat([snap2, pd.DataFrame(extra_rows)], ignore_index=True)
     snap2["regions"] = "Europe"
     snap2.to_csv(raw_dir / "jobs_2026-08-20.csv", index=False)
     (raw_dir / "jobs_2026-08-20.csv.dvc").write_text("outs:\n- path: jobs_2026-08-20.csv\n", encoding="utf-8")
@@ -253,6 +270,21 @@ def synthetic_foorilla_env(tmp_path: Path) -> Path:
   validation_ratio: 0.15
   test_ratio: 0.15
   target_scope: reportado
+
+model:
+  algorithm: lightgbm
+  random_state: 42
+  lightgbm:
+    n_estimators: 10
+    num_leaves: 15
+    min_child_samples: 2
+    verbosity: -1
+
+qualification:
+  min_improvement_vs_baseline: 0.10
+  max_temporal_gap: 0.25
+  backtest_train_ratio: 0.80
+  uncertainty_quantile: 0.80
 """,
         encoding="utf-8",
     )
@@ -358,3 +390,29 @@ def test_reproducible_pipeline_collect_validate_and_preprocess(synthetic_foorill
     assert prep_rep["feature_count"] == 24
     assert prep_rep["categorical_feature_count"] == 6
     assert prep_rep["numeric_feature_count"] == 18
+
+    # 4. Execute qualify
+    from ml_pipeline.modeling.qualify import qualify
+
+    qualify_rep = qualify(settings)
+
+    qual_path = synthetic_foorilla_env / "artifacts/reports/qualification.json"
+    calib_path = synthetic_foorilla_env / "artifacts/reports/uncertainty_calibration.json"
+
+    assert qual_path.is_file()
+    assert calib_path.is_file()
+
+    qual_data = read_json(qual_path)
+    assert qual_data["algorithm"] == "lightgbm"
+    assert qual_data["baseline_mae"] > 0.0
+    assert qual_data["validation_mae"] > 0.0
+    assert qual_data["uncertainty_margin"] > 0.0
+    assert qual_data["nominal_coverage"] == 0.80
+    assert isinstance(qual_data["eligible"], bool)
+
+    calib_data = read_json(calib_path)
+    assert calib_data["nominal_coverage"] == 0.80
+    assert calib_data["quantile_method"] == "higher"
+    assert calib_data["source_split"] == "validation"
+    assert calib_data["validation_rows"] == len(val_part_df)
+

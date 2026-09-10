@@ -35,3 +35,21 @@ stages:
           cache: false
       - artifacts/reports/preprocess.json:
           cache: false
+
+  qualify:
+    cmd: python -m ml_pipeline qualify
+    deps:
+      - artifacts/reports/train_limits.json
+      - data/processed/train.parquet
+      - data/processed/validation.parquet
+      - src/ml_pipeline/features.py
+      - src/ml_pipeline/modeling/qualify.py
+    params:
+      - model
+      - qualification
+    outs:
+      - artifacts/reports/qualification.json:
+          cache: false
+      - artifacts/reports/uncertainty_calibration.json:
+          cache: false
+

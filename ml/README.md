@@ -34,18 +34,19 @@ cp .env.example .env
 `requirements.lock.txt` instala también el paquete local en modo editable, por lo
 que la CLI queda disponible sin configurar `PYTHONPATH`.
 
-## Pipeline reproducible (Fase 2: Ingesta, Validación y Preprocesamiento)
+## Pipeline reproducible (Fase 3: Ingesta, Validación, Preprocesamiento y Calificación)
 
-Actualmente el pipeline DVC gobierna de forma reproducible las etapas de ingesta, validación y preprocesamiento con split temporal de datos:
+Actualmente el pipeline DVC gobierna de forma reproducible las etapas de ingesta, validación, preprocesamiento con split temporal y calificación del modelo salarial:
 
 ```text
-collect -> validate -> preprocess
+collect -> validate -> preprocess -> qualify
 ```
 
 ```bash
 python -m ml_pipeline collect
 python -m ml_pipeline validate
 python -m ml_pipeline preprocess
+python -m ml_pipeline qualify
 # O mediante DVC:
 dvc repro
 ```
@@ -64,12 +65,15 @@ dvc repro
 - **Validated**: `data/validated/dataset.parquet` (dataset que supera todas las invariantes de calidad y esquema).
 - **Processed**: `data/processed/train.parquet`, `validation.parquet`, `test.parquet` (particiones con ordenamiento temporal estricto 70/15/15 sobre universo `target_scope: reportado`, conteniendo metadatos `id`, `published`, las 24 features y targets salariales `y_min_usd`, `y_max_usd`).
 - **Límites de entrenamiento**: `artifacts/reports/train_limits.json` calculado exclusivamente con la partición de train (cuantiles 0.001 y 0.999).
+- **Calificación y Calibración de Incertidumbre**:
+  - `artifacts/reports/qualification.json`: métricas del baseline (DummyRegressor), validación LightGBM, retrotest temporal en train (80/20) y verificación de criterios (`improvement_vs_baseline >= 0.10`, `abs(temporal_gap) <= 0.25`).
+  - `artifacts/reports/uncertainty_calibration.json`: margen de incertidumbre conjunto sobre validación (`quantile(joint_error, 0.80, method="higher")`).
 - **Manifiestos y reportes**:
   - `artifacts/reports/data_manifest.json`: huella SHA-256 por snapshot y `dataset_fingerprint`.
   - `artifacts/reports/validation.json`: conteos por `target_source` y estadísticas de validación.
   - `artifacts/reports/preprocess.json`: resumen de splits, rangos de fechas, contrato de 24 features y metadata de reproducibilidad.
 
-*Nota*: Las etapas posteriores de entrenamiento, calificación y evaluación del modelo salarial serán migradas en las siguientes fases.
+*Nota*: `test.parquet` permanece estrictamente desacoplado de la etapa `qualify` para evitar data leakage. El entrenamiento del modelo final y su evaluación sobre test corresponden a la Fase 4.
 
 ## Tracking y registro
 

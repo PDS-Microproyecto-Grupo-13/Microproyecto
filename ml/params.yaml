@@ -5,8 +5,22 @@ data:
   target_scope: reportado
 
 model:
-  algorithm: logistic_regression
+  algorithm: lightgbm
   random_state: 42
+
+  lightgbm:
+    objective: regression_l1
+    verbosity: -1
+    subsample_freq: 1
+    subsample: 0.8
+    reg_lambda: 3.0
+    num_leaves: 95
+    n_estimators: 700
+    min_child_samples: 20
+    learning_rate: 0.06
+    colsample_bytree: 1.0
+    random_state: 42
+    n_jobs: -1
 
   logistic_regression:
     C: 1.0
@@ -16,6 +30,12 @@ model:
     n_estimators: 200
     max_depth: 10
     min_samples_leaf: 1
+
+qualification:
+  min_improvement_vs_baseline: 0.10
+  max_temporal_gap: 0.25
+  backtest_train_ratio: 0.80
+  uncertainty_quantile: 0.80
 
 evaluation:
   primary_metric: f1

@@ -9,6 +9,7 @@ from ml_pipeline.data.collect import collect
 from ml_pipeline.data.preprocess import preprocess
 from ml_pipeline.data.validate import validate
 from ml_pipeline.modeling.evaluate import evaluate
+from ml_pipeline.modeling.qualify import qualify
 from ml_pipeline.modeling.train import train
 from ml_pipeline.settings import Settings
 from ml_pipeline.tracking.mlflow_tracker import track
@@ -19,6 +20,7 @@ COMMANDS: dict[str, Callable[[Settings], object]] = {
     "collect": collect,
     "validate": validate,
     "preprocess": preprocess,
+    "qualify": qualify,
     "train": train,
     "evaluate": evaluate,
     "track": track,
