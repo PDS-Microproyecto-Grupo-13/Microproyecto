@@ -31,6 +31,7 @@ stages:
     cmd: python -m ml_pipeline train
     deps:
       - data/processed/train.csv
+      - src/ml_pipeline/modeling/factory.py
       - src/ml_pipeline/modeling/train.py
     params:
       - model
@@ -43,11 +44,13 @@ stages:
     deps:
       - artifacts/work/model/model.joblib
       - data/processed/test.csv
-      - src/ml_pipeline/modeling/evaluate.py
       - src/ml_pipeline/modeling/candidate.py
+      - src/ml_pipeline/modeling/evaluate.py
+      - src/ml_pipeline/modeling/factory.py
       - src/ml_pipeline/tracking/lineage.py
     params:
       - evaluation
+      - model
     metrics:
       - artifacts/reports/metrics.json:
           cache: false

@@ -27,6 +27,24 @@ def flatten_params(value: dict[str, Any], prefix: str = "") -> dict[str, Any]:
     return flattened
 
 
+def filter_inactive_algorithm_params(params: dict[str, Any]) -> dict[str, Any]:
+    filtered = {k: (dict(v) if isinstance(v, dict) else v) for k, v in params.items()}
+    model_section = filtered.get("model")
+    if isinstance(model_section, dict):
+        model_copy = dict(model_section)
+        algorithm = model_copy.get("algorithm")
+        if algorithm == "logistic_regression":
+            model_copy.pop("random_forest", None)
+        elif algorithm == "random_forest":
+            model_copy.pop("logistic_regression", None)
+        filtered["model"] = model_copy
+    return filtered
+
+
+def effective_tracking_params(params: dict[str, Any]) -> dict[str, Any]:
+    return flatten_params(filter_inactive_algorithm_params(params))
+
+
 def track(settings: Settings) -> str:
     model_path = settings.path("artifacts/work/model/model.joblib")
     metrics_path = settings.path("artifacts/reports/metrics.json")
@@ -42,12 +60,18 @@ def track(settings: Settings) -> str:
     signature = infer_signature(example, model.predict(example))
     metrics = read_json(metrics_path)
     lineage = collect_lineage(settings, include_lock=True)
-    LOGGER.info("track | uri=%s | experiment=%s", settings.mlflow_tracking_uri, settings.mlflow_experiment_name)
+    model_config = settings.section("model")
+    algorithm = str(model_config.get("algorithm", "unknown"))
+    LOGGER.info("track | uri=%s | experiment=%s | algorithm=%s", settings.mlflow_tracking_uri, settings.mlflow_experiment_name, algorithm)
 
-    with mlflow.start_run() as run:
-        mlflow.log_params(flatten_params(settings.params))
+    with mlflow.start_run(run_name=algorithm) as run:
+        mlflow.log_params(effective_tracking_params(settings.params))
         mlflow.log_metrics(metrics)
-        mlflow.set_tags(as_mlflow_tags(lineage))
+        tags = {
+            **as_mlflow_tags(lineage),
+            "algorithm": algorithm,
+        }
+        mlflow.set_tags(tags)
         reports = settings.path("artifacts/reports")
         for name in ("validation.json", "metrics.json", "candidate.json", "experiment_manifest.json"):
             path = reports / name
@@ -67,6 +91,7 @@ def track(settings: Settings) -> str:
 
     tracking_result = {
         "run_id": run_id,
+        "algorithm": algorithm,
         "model_id": model_info.model_id,
         "model_uri": model_info.model_uri,
     }
@@ -77,7 +102,8 @@ def track(settings: Settings) -> str:
     )
 
     LOGGER.info(
-        "track | result=success | run_id=%s | model_id=%s | model_uri=%s",
+        "track | result=success | algorithm=%s | run_id=%s | model_id=%s | model_uri=%s",
+        algorithm,
         run_id,
         model_info.model_id,
         model_info.model_uri,

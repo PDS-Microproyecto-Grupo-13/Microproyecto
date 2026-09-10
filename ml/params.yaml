@@ -3,10 +3,17 @@ data:
   random_state: 42
 
 model:
-  algorithm: logistic_regression
-  C: 1.0
-  max_iter: 1000
+  algorithm: random_forest
   random_state: 42
+
+  logistic_regression:
+    C: 1.0
+    max_iter: 1000
+
+  random_forest:
+    n_estimators: 201
+    max_depth: 10
+    min_samples_leaf: 1
 
 evaluation:
   primary_metric: f1

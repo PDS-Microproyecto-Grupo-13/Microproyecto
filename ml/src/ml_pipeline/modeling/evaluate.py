@@ -8,6 +8,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 
 from ml_pipeline.common.io import write_json
 from ml_pipeline.modeling.candidate import candidate_decision
+from ml_pipeline.modeling.factory import effective_model_params
 from ml_pipeline.settings import Settings
 from ml_pipeline.tracking.lineage import collect_lineage
 
@@ -31,10 +32,18 @@ def evaluate(settings: Settings) -> None:
     model = joblib.load(model_path)
     metrics = calculate_metrics(frame["target"], model.predict(frame.drop(columns="target")))
     decision = candidate_decision(metrics, settings.section("evaluation"))
+    model_config = settings.section("model")
+    algorithm = str(model_config.get("algorithm"))
+    model_parameters = effective_model_params(model_config)
     evaluation = settings.section("evaluation")
     primary = str(evaluation["primary_metric"])
     manifest = {
         **collect_lineage(settings),
+        "algorithm": algorithm,
+        "model": {
+            "algorithm": algorithm,
+            "parameters": model_parameters,
+        },
         "primary_metric": primary,
         "primary_metric_value": metrics[primary],
         "candidate": decision["eligible"],
@@ -42,4 +51,10 @@ def evaluate(settings: Settings) -> None:
     write_json(settings.path("artifacts/reports/metrics.json"), metrics)
     write_json(settings.path("artifacts/reports/candidate.json"), decision)
     write_json(settings.path("artifacts/reports/experiment_manifest.json"), manifest)
-    LOGGER.info("evaluate | result=success | %s=%.6f | eligible=%s", primary, metrics[primary], decision["eligible"])
+    LOGGER.info(
+        "evaluate | result=success | algorithm=%s | %s=%.6f | eligible=%s",
+        algorithm,
+        primary,
+        metrics[primary],
+        decision["eligible"],
+    )
