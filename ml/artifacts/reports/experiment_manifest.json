@@ -1,20 +1,19 @@
 {
-  "algorithm": "random_forest",
+  "algorithm": "logistic_regression",
   "candidate": true,
   "dataset_fingerprint": "75a1d74a59df9cb0a78ecc0a36085bf8a85239557f178d3b8d758e88b26416e1",
   "dvc_revision": "c593d2d8c1960d939bd1f4ee8068d1a217e1b4776b3fd0960d450ac7fb7227a6",
-  "git_commit": "eb39618767de4eb8c5fc77a5ec62bb94e46dfbb0",
+  "git_commit": "6e161aff008bd8410b0aaa155dd00d49c258031d",
   "git_dirty": true,
   "model": {
-    "algorithm": "random_forest",
+    "algorithm": "logistic_regression",
     "parameters": {
-      "max_depth": 10,
-      "min_samples_leaf": 1,
-      "n_estimators": 201,
+      "C": 1.0,
+      "max_iter": 1000,
       "random_state": 42
     }
   },
-  "params_hash": "914fb3c80561c989b88116a8289694b64ccf9e7cd62bdb5098f4461d14b2d235",
+  "params_hash": "6495e64810a5ecf5946447816c0a10026c7901271fc309838805ac5eb0f74069",
   "primary_metric": "f1",
-  "primary_metric_value": 0.9655172413793104
+  "primary_metric_value": 0.9861111111111112
 }

@@ -13,11 +13,62 @@ from ml_pipeline.data.validate import validate
 from ml_pipeline.modeling.evaluate import evaluate
 from ml_pipeline.modeling.train import train
 from ml_pipeline.settings import Settings
+from ml_pipeline.modeling.factory import build_model, effective_model_params
 from ml_pipeline.tracking.mlflow_tracker import (
     effective_tracking_params,
     filter_inactive_algorithm_params,
+    normalize_mlflow_param,
     track,
 )
+
+
+def test_normalize_mlflow_param() -> None:
+    assert normalize_mlflow_param(None) == "null"
+    assert normalize_mlflow_param(42) == 42
+    assert normalize_mlflow_param(3.14) == 3.14
+    assert normalize_mlflow_param("hello") == "hello"
+    assert normalize_mlflow_param(True) is True
+    assert normalize_mlflow_param(False) is False
+
+
+def test_effective_tracking_params_random_forest_with_none_depth() -> None:
+    params = {
+        "model": {
+            "algorithm": "random_forest",
+            "random_state": 42,
+            "random_forest": {"n_estimators": 100, "max_depth": None, "min_samples_leaf": 1},
+        }
+    }
+    effective = effective_tracking_params(params)
+    assert effective["model.algorithm"] == "random_forest"
+    assert effective["model.random_forest.max_depth"] == "null"
+    assert effective["model.random_forest.n_estimators"] == 100
+
+
+def test_consistency_factory_manifest_and_tracking() -> None:
+    params = {
+        "data": {"test_size": 0.2, "random_state": 42},
+        "model": {
+            "algorithm": "random_forest",
+            "random_state": 42,
+            "logistic_regression": {"C": 1.0, "max_iter": 1000},
+            "random_forest": {"n_estimators": 100, "max_depth": None, "min_samples_leaf": 2},
+        },
+        "evaluation": {"primary_metric": "f1", "minimum_score": 0.8},
+    }
+    # 1. Factory
+    factory_params = effective_model_params(params["model"])
+    model = build_model(params["model"])
+    rf = model.named_steps["classifier"]
+    assert rf.max_depth is None
+    assert rf.n_estimators == 100
+    assert factory_params["max_depth"] is None
+
+    # 2. Tracking
+    tracking = effective_tracking_params(params)
+    assert tracking["model.random_forest.max_depth"] == "null"
+    assert tracking["model.random_forest.n_estimators"] == 100
+    assert "model.logistic_regression.C" not in tracking
 
 
 def test_effective_tracking_params_for_logistic_regression() -> None:
@@ -82,8 +133,14 @@ def test_track_creates_mlflow_run_with_filtered_params_and_tags(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, algorithm: str
 ) -> None:
     db_path = tmp_path / "mlflow.db"
-    monkeypatch.setenv("MLFLOW_TRACKING_URI", f"sqlite:///{db_path}")
-    monkeypatch.setenv("MLFLOW_EXPERIMENT_NAME", f"test-experiment-{algorithm}")
+    artifacts_dir = tmp_path / "mlartifacts"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    tracking_uri = f"sqlite:///{db_path}"
+    experiment_name = f"test-experiment-{algorithm}"
+    monkeypatch.setenv("MLFLOW_TRACKING_URI", tracking_uri)
+    monkeypatch.setenv("MLFLOW_EXPERIMENT_NAME", experiment_name)
+    client = MlflowClient(tracking_uri=tracking_uri)
+    client.create_experiment(experiment_name, artifact_location=artifacts_dir.as_uri())
 
     (tmp_path / "params.yaml").write_text(
         f"""data:

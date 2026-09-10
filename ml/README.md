@@ -88,8 +88,9 @@ python -m ml_pipeline register-candidate
 `track` es intencionalmente externo a `dvc repro`: crea un MLflow Run explícito
 (con `run_name` igual al algoritmo utilizado). Registra:
 - el tag y parámetro `algorithm` utilizado;
-- únicamente los hiperparámetros efectivos del algoritmo activo (filtrando ramas de algoritmos inactivos);
+- únicamente los hiperparámetros efectivos del algoritmo activo (provenientes de una única fuente de verdad `effective_model_params`, filtrando ramas de algoritmos inactivos);
 - parámetros reproducibles de datos y evaluación (`data.*`, `evaluation.*`);
+- valores opcionales `None` normalizados determinísticamente como `"null"` en MLflow (conservados como `null` en manifests JSON);
 - métricas generadas en la evaluación (`accuracy`, `precision`, `recall`, `f1`);
 - lineage y tags de procedencia;
 - reports generados (`validation.json`, `metrics.json`, `candidate.json`, `experiment_manifest.json`);
@@ -135,7 +136,7 @@ convertir hoy el proyecto en un framework genérico.
 pytest
 ```
 
-Las pruebas unitarias cubren validación, métricas, factoría de modelos (`logistic_regression` y `random_forest`), gate, configuración, lineage y
+Las pruebas unitarias cubren validación, métricas, factoría de modelos (`logistic_regression` y `random_forest`), gate, configuración, lineage, normalización de parámetros y
 rechazo de registro. La integración recorre las cinco etapas DVC en un directorio
-temporal para ambos algoritmos. El contrato verifica el esquema de entrada, preprocessing encapsulado y
+temporal para ambos algoritmos y cubre el contrato automatizado `track -> register-candidate` sobre un backend SQLite temporal aislado. El contrato verifica el esquema de entrada, preprocessing encapsulado y
 predicciones binarias. Ninguna prueba requiere MLflow remoto ni `model_provider/`.

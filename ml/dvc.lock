@@ -66,8 +66,8 @@ stages:
       size: 97196
     - path: src/ml_pipeline/modeling/factory.py
       hash: md5
-      md5: 49d78f95ec969b1962b9e2685c6cfd70
-      size: 3296
+      md5: 71070e21b5672a2576619db61edcd988
+      size: 3427
     - path: src/ml_pipeline/modeling/train.py
       hash: md5
       md5: 90bcdb18c7fec27e8b40a47055186e35
@@ -75,28 +75,28 @@ stages:
     params:
       params.yaml:
         model:
-          algorithm: random_forest
+          algorithm: logistic_regression
           random_state: 42
           logistic_regression:
             C: 1.0
             max_iter: 1000
           random_forest:
-            n_estimators: 201
+            n_estimators: 200
             max_depth: 10
             min_samples_leaf: 1
     outs:
     - path: artifacts/work/model
       hash: md5
-      md5: 0f4c4648bd0e82bcc8baabf76e5bf101.dir
-      size: 658082
+      md5: f028a371875a7554d12fc0d4d5e2dc20.dir
+      size: 3601
       nfiles: 1
   evaluate:
     cmd: python -m ml_pipeline evaluate
     deps:
     - path: artifacts/work/model/model.joblib
       hash: md5
-      md5: 65d7701fea04e19b4ce4f34b632b3305
-      size: 658082
+      md5: 43188f157515802a01687f796eccc5f1
+      size: 3601
     - path: data/processed/test.csv
       hash: md5
       md5: a0864871521c5b0a3859dc0e54ccbc29
@@ -111,8 +111,8 @@ stages:
       size: 2354
     - path: src/ml_pipeline/modeling/factory.py
       hash: md5
-      md5: 49d78f95ec969b1962b9e2685c6cfd70
-      size: 3296
+      md5: 71070e21b5672a2576619db61edcd988
+      size: 3427
     - path: src/ml_pipeline/tracking/lineage.py
       hash: md5
       md5: 90db9175bb22c912737c48b5e803fd7e
@@ -123,13 +123,13 @@ stages:
           primary_metric: f1
           minimum_score: 0.8
         model:
-          algorithm: random_forest
+          algorithm: logistic_regression
           random_state: 42
           logistic_regression:
             C: 1.0
             max_iter: 1000
           random_forest:
-            n_estimators: 201
+            n_estimators: 200
             max_depth: 10
             min_samples_leaf: 1
     outs:
@@ -139,9 +139,9 @@ stages:
       size: 40
     - path: artifacts/reports/experiment_manifest.json
       hash: md5
-      md5: 3a6fc5672b01ee46ee354987f31f09ac
-      size: 655
+      md5: ecf55a9b935bce1608fa8be98e44b71c
+      size: 628
     - path: artifacts/reports/metrics.json
       hash: md5
-      md5: 6c718d103246bda7a8fd8ed00c1d081c
-      size: 130
+      md5: 60c4cfe139cfd8d04a79f6bb0e36fae4
+      size: 132

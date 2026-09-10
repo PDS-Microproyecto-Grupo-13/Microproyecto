@@ -3,7 +3,7 @@ data:
   random_state: 42
 
 model:
-  algorithm: random_forest
+  algorithm: logistic_regression
   random_state: 42
 
   logistic_regression:
@@ -11,7 +11,7 @@ model:
     max_iter: 1000
 
   random_forest:
-    n_estimators: 201
+    n_estimators: 200
     max_depth: 10
     min_samples_leaf: 1
 

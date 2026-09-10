@@ -32,6 +32,22 @@ def test_effective_model_params_random_forest() -> None:
     assert params == {"random_state": 7, "n_estimators": 100, "max_depth": 8, "min_samples_leaf": 3}
 
 
+def test_effective_model_params_random_forest_with_none_depth() -> None:
+    config = {
+        "algorithm": "random_forest",
+        "random_state": 42,
+        "random_forest": {"n_estimators": 150, "max_depth": None, "min_samples_leaf": 2},
+    }
+    params = effective_model_params(config)
+    assert params["max_depth"] is None
+    assert params == {"random_state": 42, "n_estimators": 150, "max_depth": None, "min_samples_leaf": 2}
+
+
+def test_effective_model_params_invalid_algorithm() -> None:
+    with pytest.raises(ValueError, match="Unsupported algorithm"):
+        effective_model_params({"algorithm": "unsupported"})
+
+
 def test_build_model_logistic_regression() -> None:
     config = {
         "algorithm": "logistic_regression",

@@ -24,7 +24,12 @@ def effective_model_params(config: dict[str, Any]) -> dict[str, Any]:
         algo_config = config.get("random_forest")
         if not isinstance(algo_config, dict):
             algo_config = {}
-        max_depth = algo_config.get("max_depth", config.get("max_depth", 10))
+        if "max_depth" in algo_config:
+            max_depth = algo_config["max_depth"]
+        elif "max_depth" in config:
+            max_depth = config["max_depth"]
+        else:
+            max_depth = 10
         return {
             "random_state": int(algo_config.get("random_state", config.get("random_state", 42))),
             "n_estimators": int(algo_config.get("n_estimators", config.get("n_estimators", 200))),

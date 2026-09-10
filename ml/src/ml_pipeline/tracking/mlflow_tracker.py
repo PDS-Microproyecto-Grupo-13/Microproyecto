@@ -10,10 +10,17 @@ import pandas as pd
 from mlflow.models import infer_signature
 
 from ml_pipeline.common.io import read_json, write_json
+from ml_pipeline.modeling.factory import effective_model_params
 from ml_pipeline.settings import Settings
 from ml_pipeline.tracking.lineage import as_mlflow_tags, collect_lineage
 
 LOGGER = logging.getLogger(__name__)
+
+
+def normalize_mlflow_param(value: Any) -> Any:
+    if value is None:
+        return "null"
+    return value
 
 
 def flatten_params(value: dict[str, Any], prefix: str = "") -> dict[str, Any]:
@@ -23,26 +30,53 @@ def flatten_params(value: dict[str, Any], prefix: str = "") -> dict[str, Any]:
         if isinstance(item, dict):
             flattened.update(flatten_params(item, name))
         else:
-            flattened[name] = item
+            flattened[name] = normalize_mlflow_param(item)
     return flattened
 
 
 def filter_inactive_algorithm_params(params: dict[str, Any]) -> dict[str, Any]:
     filtered = {k: (dict(v) if isinstance(v, dict) else v) for k, v in params.items()}
-    model_section = filtered.get("model")
-    if isinstance(model_section, dict):
-        model_copy = dict(model_section)
-        algorithm = model_copy.get("algorithm")
-        if algorithm == "logistic_regression":
-            model_copy.pop("random_forest", None)
-        elif algorithm == "random_forest":
-            model_copy.pop("logistic_regression", None)
-        filtered["model"] = model_copy
+    model_config = filtered.get("model")
+    if isinstance(model_config, dict):
+        algorithm = model_config.get("algorithm")
+        if algorithm:
+            effective = effective_model_params(model_config)
+            algo_params = {k: v for k, v in effective.items() if k != "random_state"}
+            new_model = {"algorithm": algorithm}
+            if "random_state" in effective:
+                new_model["random_state"] = effective["random_state"]
+            new_model[algorithm] = algo_params
+            filtered["model"] = new_model
     return filtered
 
 
 def effective_tracking_params(params: dict[str, Any]) -> dict[str, Any]:
-    return flatten_params(filter_inactive_algorithm_params(params))
+    tracking_params: dict[str, Any] = {}
+
+    for section_name, section_value in params.items():
+        if section_name == "model":
+            continue
+        if isinstance(section_value, dict):
+            for key, val in flatten_params(section_value, prefix=section_name).items():
+                tracking_params[key] = normalize_mlflow_param(val)
+        else:
+            tracking_params[section_name] = normalize_mlflow_param(section_value)
+
+    model_config = params.get("model")
+    if isinstance(model_config, dict):
+        algorithm = model_config.get("algorithm")
+        tracking_params["model.algorithm"] = normalize_mlflow_param(algorithm)
+        if algorithm:
+            effective = effective_model_params(model_config)
+            common_keys = {"random_state"}
+            for key, val in effective.items():
+                if key in common_keys:
+                    param_name = f"model.{key}"
+                else:
+                    param_name = f"model.{algorithm}.{key}"
+                tracking_params[param_name] = normalize_mlflow_param(val)
+
+    return tracking_params
 
 
 def track(settings: Settings) -> str:
