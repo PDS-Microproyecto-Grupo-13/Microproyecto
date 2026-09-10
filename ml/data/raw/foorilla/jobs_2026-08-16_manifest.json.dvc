@@ -1,0 +1,5 @@
+outs:
+- md5: aa08758916a9206f1cf476c33570c3dc
+  size: 555
+  hash: md5
+  path: jobs_2026-08-16_manifest.json
