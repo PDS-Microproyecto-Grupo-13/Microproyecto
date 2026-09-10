@@ -101,6 +101,7 @@ def synthetic_foorilla_env(tmp_path: Path) -> Path:
             "salary_max_usd": 900000000,
         },
     ])
+    snap1["regions"] = "Europe"
     snap1.to_csv(raw_dir / "jobs_2026-08-16.csv", index=False)
     (raw_dir / "jobs_2026-08-16.csv.dvc").write_text("outs:\n- path: jobs_2026-08-16.csv\n", encoding="utf-8")
 
@@ -162,7 +163,7 @@ def synthetic_foorilla_env(tmp_path: Path) -> Path:
             "salary_min_usd": 80000,
             "salary_max_usd": 120000,
         },
-        # Additional reported record to anchor distribution
+        # Additional reported records to anchor distribution and test temporal splits
         {
             "id": 10,
             "apply_url": "https://company-j.com/job10",
@@ -176,15 +177,92 @@ def synthetic_foorilla_env(tmp_path: Path) -> Path:
             "salary_min_usd": 65000,
             "salary_max_usd": 95000,
         },
+        {
+            "id": 11,
+            "apply_url": "https://company-k.com/job11",
+            "company": "Company K",
+            "title": "Data Analyst",
+            "location": "Remote",
+            "published": "2026-08-21T10:00:00Z",
+            "company_is_agency": False,
+            "salary_min": 55000,
+            "salary_max": 85000,
+            "salary_min_usd": 55000,
+            "salary_max_usd": 85000,
+        },
+        {
+            "id": 12,
+            "apply_url": "https://company-l.com/job12",
+            "company": "Company L",
+            "title": "Cloud Architect",
+            "location": "Madrid",
+            "published": "2026-08-22T10:00:00Z",
+            "company_is_agency": False,
+            "salary_min": 90000,
+            "salary_max": 130000,
+            "salary_min_usd": 90000,
+            "salary_max_usd": 130000,
+        },
+        {
+            "id": 13,
+            "apply_url": "https://company-m.com/job13",
+            "company": "Company M",
+            "title": "Security Specialist",
+            "location": "Berlin",
+            "published": "2026-08-23T10:00:00Z",
+            "company_is_agency": False,
+            "salary_min": 75000,
+            "salary_max": 105000,
+            "salary_min_usd": 75000,
+            "salary_max_usd": 105000,
+        },
+        {
+            "id": 14,
+            "apply_url": "https://company-n.com/job14",
+            "company": "Company N",
+            "title": "Fullstack Dev",
+            "location": "Paris",
+            "published": "2026-08-24T10:00:00Z",
+            "company_is_agency": False,
+            "salary_min": 68000,
+            "salary_max": 98000,
+            "salary_min_usd": 68000,
+            "salary_max_usd": 98000,
+        },
+        {
+            "id": 15,
+            "apply_url": "https://company-o.com/job15",
+            "company": "Company O",
+            "title": "Site Reliability Eng",
+            "location": "Remote",
+            "published": "2026-08-25T10:00:00Z",
+            "company_is_agency": False,
+            "salary_min": 82000,
+            "salary_max": 112000,
+            "salary_min_usd": 82000,
+            "salary_max_usd": 112000,
+        },
     ])
+    snap2["regions"] = "Europe"
     snap2.to_csv(raw_dir / "jobs_2026-08-20.csv", index=False)
     (raw_dir / "jobs_2026-08-20.csv.dvc").write_text("outs:\n- path: jobs_2026-08-20.csv\n", encoding="utf-8")
 
-    (tmp_path / "params.yaml").write_text("data: {}\n", encoding="utf-8")
+    (tmp_path / "params.yaml").write_text(
+        """data:
+  train_ratio: 0.70
+  validation_ratio: 0.15
+  test_ratio: 0.15
+  target_scope: reportado
+""",
+        encoding="utf-8",
+    )
     return tmp_path
 
 
-def test_reproducible_pipeline_collect_and_validate(synthetic_foorilla_env: Path) -> None:
+def test_reproducible_pipeline_collect_validate_and_preprocess(synthetic_foorilla_env: Path) -> None:
+    from ml_pipeline.data.preprocess import preprocess
+    from ml_pipeline.features import FEATURE_COLUMNS
+
     settings = Settings.load(synthetic_foorilla_env)
 
     # 1. Execute collect
@@ -234,3 +312,49 @@ def test_reproducible_pipeline_collect_and_validate(synthetic_foorilla_env: Path
     assert val_report["rows"] == len(interim_df)
     assert "reportado" in val_report["target_source_counts"]
     assert "y_min_usd" in val_report["target_statistics"]
+
+    # 3. Execute preprocess
+    preprocess(settings)
+
+    train_path = synthetic_foorilla_env / "data/processed/train.parquet"
+    val_part_path = synthetic_foorilla_env / "data/processed/validation.parquet"
+    test_part_path = synthetic_foorilla_env / "data/processed/test.parquet"
+    limits_path = synthetic_foorilla_env / "artifacts/reports/train_limits.json"
+    prep_rep_path = synthetic_foorilla_env / "artifacts/reports/preprocess.json"
+
+    assert train_path.is_file()
+    assert val_part_path.is_file()
+    assert test_part_path.is_file()
+    assert limits_path.is_file()
+    assert prep_rep_path.is_file()
+
+    train_df = pd.read_parquet(train_path)
+    val_part_df = pd.read_parquet(val_part_path)
+    test_part_df = pd.read_parquet(test_part_path)
+
+    # Verify feature columns contract and order
+    expected_cols = ["id", "published"] + FEATURE_COLUMNS + ["y_min_usd", "y_max_usd"]
+    assert list(train_df.columns) == expected_cols
+    assert list(val_part_df.columns) == expected_cols
+    assert list(test_part_df.columns) == expected_cols
+
+    # Verify no overlap across splits
+    all_processed_ids = list(train_df["id"]) + list(val_part_df["id"]) + list(test_part_df["id"])
+    assert len(all_processed_ids) == len(set(all_processed_ids))
+
+    # Verify temporal order
+    assert train_df["published"].max() <= val_part_df["published"].min()
+    assert val_part_df["published"].max() <= test_part_df["published"].min()
+
+    # Verify train limits
+    limits = read_json(limits_path)
+    assert limits["floor"] >= 1000.0
+    assert limits["floor"] < limits["ceiling"]
+    assert limits["source_split"] == "train"
+
+    # Verify preprocess report
+    prep_rep = read_json(prep_rep_path)
+    assert prep_rep["target_scope"] == "reportado"
+    assert prep_rep["feature_count"] == 24
+    assert prep_rep["categorical_feature_count"] == 6
+    assert prep_rep["numeric_feature_count"] == 18

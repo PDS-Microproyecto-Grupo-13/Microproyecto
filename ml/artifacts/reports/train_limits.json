@@ -1,0 +1,7 @@
+{
+  "ceiling": 720000.0,
+  "ceiling_quantile": 0.999,
+  "floor": 10935.571999999996,
+  "floor_quantile": 0.001,
+  "source_split": "train"
+}

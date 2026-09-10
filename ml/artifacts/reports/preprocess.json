@@ -1,0 +1,85 @@
+{
+  "categorical_columns": [
+    "title",
+    "country",
+    "region",
+    "experience_level",
+    "work_mode",
+    "company"
+  ],
+  "categorical_feature_count": 6,
+  "dataset_fingerprint": "541f47bf1bb49a6a0e5947d49dade61c444e74cd5350cfbb68a185506cd957ed",
+  "feature_columns": [
+    "title",
+    "country",
+    "region",
+    "experience_level",
+    "work_mode",
+    "company",
+    "company_is_agency",
+    "experience_years",
+    "experience_years_missing",
+    "skill_python",
+    "skill_sql",
+    "skill_aws",
+    "skill_azure",
+    "skill_gcp",
+    "skill_spark",
+    "skill_docker",
+    "skill_kubernetes",
+    "skill_machine_learning",
+    "skill_pytorch",
+    "skill_tensorflow",
+    "skill_tableau",
+    "skill_power_bi",
+    "published_year",
+    "published_month"
+  ],
+  "feature_count": 24,
+  "numeric_columns": [
+    "company_is_agency",
+    "experience_years",
+    "experience_years_missing",
+    "skill_python",
+    "skill_sql",
+    "skill_aws",
+    "skill_azure",
+    "skill_gcp",
+    "skill_spark",
+    "skill_docker",
+    "skill_kubernetes",
+    "skill_machine_learning",
+    "skill_pytorch",
+    "skill_tensorflow",
+    "skill_tableau",
+    "skill_power_bi",
+    "published_year",
+    "published_month"
+  ],
+  "numeric_feature_count": 18,
+  "published_nulls": 0,
+  "rows_modeling": 54363,
+  "rows_validated": 260158,
+  "split": {
+    "test": {
+      "published_max": "2026-09-01 05:37:04+00:00",
+      "published_min": "2026-05-26 00:00:00+00:00",
+      "rows": 8155
+    },
+    "train": {
+      "published_max": "2026-03-03 00:00:00+00:00",
+      "published_min": "2025-01-01 00:13:20+00:00",
+      "rows": 38054
+    },
+    "validation": {
+      "published_max": "2026-05-26 00:00:00+00:00",
+      "published_min": "2026-03-03 00:00:00+00:00",
+      "rows": 8154
+    }
+  },
+  "target_scope": "reportado",
+  "train_limits": {
+    "ceiling": 720000.0,
+    "floor": 10935.571999999996
+  }
+}

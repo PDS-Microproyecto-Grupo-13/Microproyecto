@@ -44,113 +44,43 @@ stages:
   preprocess:
     cmd: python -m ml_pipeline preprocess
     deps:
-    - path: data/validated/dataset.csv
+    - path: data/validated/dataset.parquet
       hash: md5
-      md5: 5afc23b9622f8f9ffa60824f4e97d0d5
-      size: 121385
+      md5: 916ab193d6513d6bf33c962e114aca57
+      size: 104919927
     - path: src/ml_pipeline/data/preprocess.py
       hash: md5
-      md5: d0bcab16d294e5965ebe9e6597746382
-      size: 1029
+      md5: b3761cefedf36ece65fc2e56330e07ff
+      size: 8082
+    - path: src/ml_pipeline/features.py
+      hash: md5
+      md5: bf30fe9e9db01fffa1bb652ed15cd73e
+      size: 5544
     params:
       params.yaml:
         data:
-          test_size: 0.2
-          random_state: 42
+          train_ratio: 0.7
+          validation_ratio: 0.15
+          test_ratio: 0.15
+          target_scope: reportado
     outs:
-    - path: data/processed/test.csv
+    - path: artifacts/reports/preprocess.json
       hash: md5
-      md5: a0864871521c5b0a3859dc0e54ccbc29
-      size: 24681
-    - path: data/processed/train.csv
+      md5: 60bf487e7344aaa88d8c906bf88aaf79
+      size: 1907
+    - path: artifacts/reports/train_limits.json
       hash: md5
-      md5: 7bab774b027c20cb0c5d906f7b085507
-      size: 97196
-  train:
-    cmd: python -m ml_pipeline train
-    deps:
-    - path: data/processed/train.csv
+      md5: 5fae090b7fce9a5cdc356b20bde9bcd8
+      size: 140
+    - path: data/processed/test.parquet
       hash: md5
-      md5: 7bab774b027c20cb0c5d906f7b085507
-      size: 97196
-    - path: src/ml_pipeline/modeling/factory.py
+      md5: 871d6c56e235f04d52da853c58d87d1e
+      size: 301958
+    - path: data/processed/train.parquet
       hash: md5
-      md5: 71070e21b5672a2576619db61edcd988
-      size: 3427
-    - path: src/ml_pipeline/modeling/train.py
+      md5: 574a131811d9a168326c5dbf8a6b648b
+      size: 1224727
+    - path: data/processed/validation.parquet
       hash: md5
-      md5: 90bcdb18c7fec27e8b40a47055186e35
-      size: 1016
-    params:
-      params.yaml:
-        model:
-          algorithm: logistic_regression
-          random_state: 42
-          logistic_regression:
-            C: 1.0
-            max_iter: 1000
-          random_forest:
-            n_estimators: 200
-            max_depth: 10
-            min_samples_leaf: 1
-    outs:
-    - path: artifacts/work/model
-      hash: md5
-      md5: f028a371875a7554d12fc0d4d5e2dc20.dir
-      size: 3601
-      nfiles: 1
-  evaluate:
-    cmd: python -m ml_pipeline evaluate
-    deps:
-    - path: artifacts/work/model/model.joblib
-      hash: md5
-      md5: 43188f157515802a01687f796eccc5f1
-      size: 3601
-    - path: data/processed/test.csv
-      hash: md5
-      md5: a0864871521c5b0a3859dc0e54ccbc29
-      size: 24681
-    - path: src/ml_pipeline/modeling/candidate.py
-      hash: md5
-      md5: 3dc4b6b23a42e06445ed7e596eb9c3db
-      size: 564
-    - path: src/ml_pipeline/modeling/evaluate.py
-      hash: md5
-      md5: 1e3dcb0e19ce97486a808a103a91dfef
-      size: 2354
-    - path: src/ml_pipeline/modeling/factory.py
-      hash: md5
-      md5: 71070e21b5672a2576619db61edcd988
-      size: 3427
-    - path: src/ml_pipeline/tracking/lineage.py
-      hash: md5
-      md5: 90db9175bb22c912737c48b5e803fd7e
-      size: 1644
-    params:
-      params.yaml:
-        evaluation:
-          primary_metric: f1
-          minimum_score: 0.8
-        model:
-          algorithm: logistic_regression
-          random_state: 42
-          logistic_regression:
-            C: 1.0
-            max_iter: 1000
-          random_forest:
-            n_estimators: 200
-            max_depth: 10
-            min_samples_leaf: 1
-    outs:
-    - path: artifacts/reports/candidate.json
-      hash: md5
-      md5: 9c7eb65c36b360e6cfac10fc7da264ec
-      size: 40
-    - path: artifacts/reports/experiment_manifest.json
-      hash: md5
-      md5: ecf55a9b935bce1608fa8be98e44b71c
-      size: 628
-    - path: artifacts/reports/metrics.json
-      hash: md5
-      md5: 60c4cfe139cfd8d04a79f6bb0e36fae4
-      size: 132
+      md5: 9758c8fb268b8a36fe2ce66d3945de2f
+      size: 298608

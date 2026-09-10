@@ -34,17 +34,18 @@ cp .env.example .env
 `requirements.lock.txt` instala también el paquete local en modo editable, por lo
 que la CLI queda disponible sin configurar `PYTHONPATH`.
 
-## Pipeline reproducible (Fase 1: Ingesta y Validación)
+## Pipeline reproducible (Fase 2: Ingesta, Validación y Preprocesamiento)
 
-Actualmente el pipeline DVC gobierna de forma reproducible las etapas de ingesta y validación de datos:
+Actualmente el pipeline DVC gobierna de forma reproducible las etapas de ingesta, validación y preprocesamiento con split temporal de datos:
 
 ```text
-collect -> validate
+collect -> validate -> preprocess
 ```
 
 ```bash
 python -m ml_pipeline collect
 python -m ml_pipeline validate
+python -m ml_pipeline preprocess
 # O mediante DVC:
 dvc repro
 ```
@@ -61,10 +62,14 @@ dvc repro
 ### Salidas y Trazabilidad
 - **Interim**: `data/interim/foorilla_consolidated.parquet` (dataset consolidado, deduplicado y con filtros de coherencia salarial e inliers).
 - **Validated**: `data/validated/dataset.parquet` (dataset que supera todas las invariantes de calidad y esquema).
-- **Manifiesto de datos**: `artifacts/reports/data_manifest.json` registra de forma determinista la huella SHA-256 de cada snapshot participante y el `dataset_fingerprint` global.
-- **Reporte de validación**: `artifacts/reports/validation.json` contiene los conteos por `target_source` (`reportado`, `híbrido`, `estimado`) y estadísticas descriptivas de los targets.
+- **Processed**: `data/processed/train.parquet`, `validation.parquet`, `test.parquet` (particiones con ordenamiento temporal estricto 70/15/15 sobre universo `target_scope: reportado`, conteniendo metadatos `id`, `published`, las 24 features y targets salariales `y_min_usd`, `y_max_usd`).
+- **Límites de entrenamiento**: `artifacts/reports/train_limits.json` calculado exclusivamente con la partición de train (cuantiles 0.001 y 0.999).
+- **Manifiestos y reportes**:
+  - `artifacts/reports/data_manifest.json`: huella SHA-256 por snapshot y `dataset_fingerprint`.
+  - `artifacts/reports/validation.json`: conteos por `target_source` y estadísticas de validación.
+  - `artifacts/reports/preprocess.json`: resumen de splits, rangos de fechas, contrato de 24 features y metadata de reproducibilidad.
 
-*Nota*: Las etapas de preparación para modelado (`preprocess` con split temporal 70/15/15), calificación (`qualify`), entrenamiento y evaluación del modelo salarial serán migradas en las siguientes fases.
+*Nota*: Las etapas posteriores de entrenamiento, calificación y evaluación del modelo salarial serán migradas en las siguientes fases.
 
 ## Tracking y registro
 

@@ -18,3 +18,20 @@ stages:
       - data/validated/dataset.parquet
       - artifacts/reports/validation.json:
           cache: false
+
+  preprocess:
+    cmd: python -m ml_pipeline preprocess
+    deps:
+      - data/validated/dataset.parquet
+      - src/ml_pipeline/data/preprocess.py
+      - src/ml_pipeline/features.py
+    params:
+      - data
+    outs:
+      - data/processed/train.parquet
+      - data/processed/validation.parquet
+      - data/processed/test.parquet
+      - artifacts/reports/train_limits.json:
+          cache: false
+      - artifacts/reports/preprocess.json:
+          cache: false
