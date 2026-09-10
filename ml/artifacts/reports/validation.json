@@ -1,6 +1,27 @@
 {
-  "columns": 31,
+  "columns": 38,
   "errors": [],
-  "rows": 569,
+  "rows": 260158,
+  "target_source_counts": {
+    "estimado": 200923,
+    "h\u00edbrido": 4872,
+    "reportado": 54363
+  },
+  "target_statistics": {
+    "y_max_usd": {
+      "max": 2190158.0,
+      "mean": 116461.07608068942,
+      "median": 96000.0,
+      "min": 436.0,
+      "std": 88736.92269676953
+    },
+    "y_min_usd": {
+      "max": 2190158.0,
+      "mean": 75846.95642263547,
+      "median": 63964.0,
+      "min": 293.0,
+      "std": 57949.88349714286
+    }
+  },
   "valid": true
 }

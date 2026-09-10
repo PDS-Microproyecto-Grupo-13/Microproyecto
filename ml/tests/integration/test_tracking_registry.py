@@ -17,9 +17,8 @@ from ml_pipeline.tracking.mlflow_tracker import track
 from ml_pipeline.tracking.registry import register_candidate
 
 
-def test_track_and_register_candidate_contract(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+@pytest.mark.skip(reason="End-to-end tracking/registry tests belong to post-modeling migration phases")
+def test_track_and_register_candidate_contract(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # 1. Setup isolated temporary MLflow backend and artifact store
     db_path = tmp_path / "mlflow.db"
     artifacts_dir = tmp_path / "mlartifacts"

@@ -34,37 +34,37 @@ cp .env.example .env
 `requirements.lock.txt` instala también el paquete local en modo editable, por lo
 que la CLI queda disponible sin configurar `PYTHONPATH`.
 
-## Pipeline reproducible
+## Pipeline reproducible (Fase 1: Ingesta y Validación)
 
-```bash
-python -m ml_pipeline --help
-dvc repro
-```
-
-DVC ejecuta únicamente:
+Actualmente el pipeline DVC gobierna de forma reproducible las etapas de ingesta y validación de datos:
 
 ```text
-collect -> validate -> preprocess -> train -> evaluate
+collect -> validate
 ```
-
-También se puede ejecutar cada etapa explícitamente:
 
 ```bash
 python -m ml_pipeline collect
 python -m ml_pipeline validate
-python -m ml_pipeline preprocess
-python -m ml_pipeline train
-python -m ml_pipeline evaluate
+# O mediante DVC:
+dvc repro
 ```
 
-La semilla, partición, algoritmo y gate de evaluación viven en `params.yaml`.
-Actualmente se soportan dos algoritmos de clasificación, seleccionables mediante `model.algorithm`:
-- `logistic_regression` (con `SimpleImputer` y `StandardScaler`)
-- `random_forest` (con `SimpleImputer`)
+### Fuente de datos y regla de entrada
+- **Fuente RAW canónica**: `data/raw/foorilla/jobs_*.csv`.
+- **Inclusión automática**: Todos los archivos `jobs_*.csv` materializados en la carpeta forman automáticamente el dataset de entrada. No se requiere mantener listas de archivos en `params.yaml`.
+- **Preflight de integridad**: Si existe un archivo de puntero `jobs_X.csv.dvc` pero el archivo físico `jobs_X.csv` no se encuentra materializado en el disco local, `collect` falla inmediatamente para evitar procesar un dataset parcial no deliberado.
+- **Descarga de snapshots**: Si un snapshot falta en el entorno local, debe materializarse explícitamente mediante DVC antes de ejecutar la ingesta:
+  ```bash
+  dvc pull data/raw/foorilla/<snapshot>.csv.dvc
+  ```
 
-Cada ejecución entrena y evalúa exactamente **un único algoritmo** seleccionado en `params.yaml`. Todavía no existe selección automática de modelos ni comparación dentro de una misma ejecución; MLflow Tracking se utilizará posteriormente para comparar los distintos runs experimentales.
+### Salidas y Trazabilidad
+- **Interim**: `data/interim/foorilla_consolidated.parquet` (dataset consolidado, deduplicado y con filtros de coherencia salarial e inliers).
+- **Validated**: `data/validated/dataset.parquet` (dataset que supera todas las invariantes de calidad y esquema).
+- **Manifiesto de datos**: `artifacts/reports/data_manifest.json` registra de forma determinista la huella SHA-256 de cada snapshot participante y el `dataset_fingerprint` global.
+- **Reporte de validación**: `artifacts/reports/validation.json` contiene los conteos por `target_source` (`reportado`, `híbrido`, `estimado`) y estadísticas descriptivas de los targets.
 
-El split ocurre antes de entrenar. Las transformaciones necesarias para inferencia forman parte del `sklearn.pipeline.Pipeline` serializado (`artifacts/work/model/model.joblib`), evitando que el consumidor tenga que reproducir transformaciones ocultas.
+*Nota*: Las etapas de preparación para modelado (`preprocess` con split temporal 70/15/15), calificación (`qualify`), entrenamiento y evaluación del modelo salarial serán migradas en las siguientes fases.
 
 ## Tracking y registro
 

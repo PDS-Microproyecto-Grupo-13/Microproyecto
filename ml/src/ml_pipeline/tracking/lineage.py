@@ -26,6 +26,14 @@ def git_metadata(root: Path) -> tuple[str | None, bool | None]:
 
 def collect_lineage(settings: Settings, include_lock: bool = False) -> dict[str, Any]:
     commit, dirty = git_metadata(settings.root)
+    manifest_path = settings.path("artifacts/reports/data_manifest.json")
+    if manifest_path.is_file():
+        from ml_pipeline.common.io import read_json
+        manifest = read_json(manifest_path)
+        dataset_fingerprint = manifest.get("dataset_fingerprint")
+    else:
+        dataset_fingerprint = sha256_file(settings.path("data/raw/dataset.csv"))
+
     lineage = {
         "git_commit": commit,
         "git_dirty": dirty,
@@ -33,7 +41,7 @@ def collect_lineage(settings: Settings, include_lock: bool = False) -> dict[str,
         # create a self-reference. dvc.yaml is the stable pipeline revision.
         "dvc_revision": sha256_file(settings.path("dvc.yaml")),
         "params_hash": sha256_file(settings.path("params.yaml")),
-        "dataset_fingerprint": sha256_file(settings.path("data/raw/dataset.csv")),
+        "dataset_fingerprint": dataset_fingerprint,
     }
     if include_lock:
         lineage["dvc_lock_hash"] = sha256_file(settings.path("dvc.lock"))

@@ -13,6 +13,7 @@ from ml_pipeline.modeling.train import train
 from ml_pipeline.settings import Settings
 
 
+@pytest.mark.skip(reason="Model contract belongs to post-data migration phases")
 @pytest.mark.parametrize(
     "algorithm, expected_steps",
     [

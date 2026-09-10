@@ -1,0 +1,42 @@
+{
+  "dataset_fingerprint": "541f47bf1bb49a6a0e5947d49dade61c444e74cd5350cfbb68a185506cd957ed",
+  "snapshot_count": 5,
+  "snapshots": [
+    {
+      "dvc_tracked": true,
+      "fingerprint": "020f51799951430232d0495a7562be13986101f9d297ed90c2b1becc64f3840d",
+      "name": "jobs_2026-08-16.csv",
+      "rows_raw": 326311,
+      "size_bytes": 395375574
+    },
+    {
+      "dvc_tracked": true,
+      "fingerprint": "5f90e381f3cbdd780f0249611d9a6e664219aac74bd6e442c306150ddb1bf6dd",
+      "name": "jobs_2026-08-20.csv",
+      "rows_raw": 2799,
+      "size_bytes": 3628504
+    },
+    {
+      "dvc_tracked": true,
+      "fingerprint": "5657122e3f5fc812b1d796367986483749d1b036deff9cb673fec5baa64dcb26",
+      "name": "jobs_2026-08-24.csv",
+      "rows_raw": 1469,
+      "size_bytes": 1909773
+    },
+    {
+      "dvc_tracked": true,
+      "fingerprint": "3e512ab41931dd7aabe7ba51d420adb0f74bd6d3cba62948cbf05665eb8f91f3",
+      "name": "jobs_2026-08-28.csv",
+      "rows_raw": 2009,
+      "size_bytes": 2634831
+    },
+    {
+      "dvc_tracked": true,
+      "fingerprint": "28c24d9c21ac84fefe09ad179ee6901ae89146516bc007069f460c8086ab37a2",
+      "name": "jobs_2026-09-01.csv",
+      "rows_raw": 1185,
+      "size_bytes": 1536288
+    }
+  ],
+  "source": "foorilla"
+}

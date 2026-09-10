@@ -3,35 +3,44 @@ stages:
   collect:
     cmd: python -m ml_pipeline collect
     deps:
+    - path: data/raw/foorilla
+      hash: md5
+      md5: 3256b1a4d9b0f4dcee81f522308613fc.dir
+      size: 405089361
+      nfiles: 21
     - path: src/ml_pipeline/data/collect.py
       hash: md5
-      md5: 4558c6d2619b130adbed9ec9f906978a
-      size: 655
+      md5: dbf9701130188277e993ecc4642c2320
+      size: 9637
     outs:
-    - path: data/raw/dataset.csv
+    - path: artifacts/reports/data_manifest.json
       hash: md5
-      md5: 5afc23b9622f8f9ffa60824f4e97d0d5
-      size: 121385
+      md5: 0b7d172fe1d30ea1af913602c984fbc0
+      size: 1258
+    - path: data/interim/foorilla_consolidated.parquet
+      hash: md5
+      md5: 916ab193d6513d6bf33c962e114aca57
+      size: 104919927
   validate:
     cmd: python -m ml_pipeline validate
     deps:
-    - path: data/raw/dataset.csv
+    - path: data/interim/foorilla_consolidated.parquet
       hash: md5
-      md5: 5afc23b9622f8f9ffa60824f4e97d0d5
-      size: 121385
+      md5: 916ab193d6513d6bf33c962e114aca57
+      size: 104919927
     - path: src/ml_pipeline/data/validate.py
       hash: md5
-      md5: 5a25bce47fb9b96859096338b4ae4e46
-      size: 2414
+      md5: e2e974245e426f243ef30bcfb3eb4c05
+      size: 5001
     outs:
     - path: artifacts/reports/validation.json
       hash: md5
-      md5: a767b957860e2e410831bb89ba382977
-      size: 68
-    - path: data/validated/dataset.csv
+      md5: 2d35fb9450b5f14b217c2b1727095bdc
+      size: 525
+    - path: data/validated/dataset.parquet
       hash: md5
-      md5: 5afc23b9622f8f9ffa60824f4e97d0d5
-      size: 121385
+      md5: 916ab193d6513d6bf33c962e114aca57
+      size: 104919927
   preprocess:
     cmd: python -m ml_pipeline preprocess
     deps:
