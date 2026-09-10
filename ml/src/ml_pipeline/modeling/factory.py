@@ -36,9 +36,20 @@ def effective_model_params(config: dict[str, Any]) -> dict[str, Any]:
             "max_depth": int(max_depth) if max_depth is not None else None,
             "min_samples_leaf": int(algo_config.get("min_samples_leaf", config.get("min_samples_leaf", 1))),
         }
+    if algorithm == "lightgbm":
+        algo_config = config.get("lightgbm")
+        if not isinstance(algo_config, dict):
+            algo_config = {}
+        result: dict[str, Any] = {
+            "random_state": int(algo_config.get("random_state", config.get("random_state", 42))),
+        }
+        for k, v in algo_config.items():
+            if k != "random_state":
+                result[k] = v
+        return result
     raise ValueError(
         f"Unsupported algorithm: {algorithm!r}. "
-        "Supported algorithms are 'logistic_regression' and 'random_forest'."
+        "Supported algorithms are 'logistic_regression', 'random_forest', and 'lightgbm'."
     )
 
 
@@ -78,15 +89,18 @@ def _build_random_forest(config: dict[str, Any]) -> Pipeline:
     )
 
 
-def build_model(config: dict[str, Any]) -> Pipeline:
+def build_model(config: dict[str, Any]) -> Any:
     algorithm = config.get("algorithm")
     if algorithm == "logistic_regression":
         return _build_logistic_regression(config)
     if algorithm == "random_forest":
         return _build_random_forest(config)
+    if algorithm == "lightgbm":
+        from ml_pipeline.modeling.qualify import build_lgbm_estimator
+        return build_lgbm_estimator(config.get("lightgbm", {}), random_state=int(config.get("random_state", 42)))
     raise ValueError(
         f"Unsupported algorithm: {algorithm!r}. "
-        "Supported algorithms are 'logistic_regression' and 'random_forest'."
+        "Supported algorithms are 'logistic_regression', 'random_forest', and 'lightgbm'."
     )
 
 

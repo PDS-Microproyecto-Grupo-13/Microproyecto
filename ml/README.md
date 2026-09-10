@@ -88,42 +88,33 @@ dvc repro
 
 *Nota de gobernanza*: La partición `test.parquet` fue evaluada por primera y única vez en `evaluate`, sin retroalimentación, sin recalibración y sin ajuste de hiperparámetros. Las fases subsiguientes abordarán el registro del candidato y el tracking en MLflow.
 
-## Tracking y registro
+## Tracking y empaquetado PyFunc (Fase 6)
 
-Configure `.env` para apuntar a un servidor compartido:
+Configure `.env` para apuntar a un servidor MLflow:
 
 ```env
 MLFLOW_TRACKING_URI=http://localhost:5000
-MLFLOW_EXPERIMENT_NAME=toy-classification
-MLFLOW_MODEL_NAME=toy-classifier
+MLFLOW_EXPERIMENT_NAME=salary-prediction
+MLFLOW_MODEL_NAME=salary-predictor
 ML_REQUIRE_CLEAN_GIT=false
 ```
 
-O use un backend local cambiando solo `MLFLOW_TRACKING_URI`, por ejemplo
-`sqlite:///mlflow.db`. Luego ejecute:
+O use un backend SQLite local cambiando solo `MLFLOW_TRACKING_URI` (por ejemplo, `sqlite:///mlflow.db`). Luego ejecute:
 
 ```bash
 python -m ml_pipeline track
-python -m ml_pipeline register-candidate
 ```
 
-`track` es intencionalmente externo a `dvc repro`: crea un MLflow Run explícito
-(con `run_name` igual al algoritmo utilizado). Registra:
-- el tag y parámetro `algorithm` utilizado;
-- únicamente los hiperparámetros efectivos del algoritmo activo (provenientes de una única fuente de verdad `effective_model_params`, filtrando ramas de algoritmos inactivos);
-- parámetros reproducibles de datos y evaluación (`data.*`, `evaluation.*`);
-- valores opcionales `None` normalizados determinísticamente como `"null"` en MLflow (conservados como `null` en manifests JSON);
-- métricas generadas en la evaluación (`accuracy`, `precision`, `recall`, `f1`);
-- lineage y tags de procedencia;
-- reports generados (`validation.json`, `metrics.json`, `candidate.json`, `experiment_manifest.json`);
-- signature, ejemplo de entrada y el modelo bajo el artifact `model`.
+`track` es **intencionalmente externo a `dvc repro`**: crea un MLflow Run explícito sin reentrenar ni reevaluar. Registra:
+- **Wrapper PyFunc**: encapsula el modelo como `SalaryPredictorModel(mlflow.pyfunc.PythonModel)`, recibiendo datos crudos (incluyendo `regions`), ejecutando `prepare_features()`, inferencia dual con límites operativos y produciendo exactamente `[salary_min_usd, salary_max_usd, salary_midpoint_usd]`.
+- **Signature e Input Example**: mapea las columnas crudas de entrada hacia las 3 columnas salariales nombradas.
+- **Parámetros efectivos**: algoritmo (`lightgbm`), targets (`y_min_usd, y_max_usd`), conteo de features (24), hiperparámetros de LightGBM y umbrales de calificación.
+- **Métricas consolidadas**: consume directamente las métricas calculadas en validación y test ciego en la Fase 5.
+- **Lineage y tags**: commit/dirty Git, `dataset_fingerprint`, revisión DVC, hash de parámetros y conteos de filas.
+- **Artifacts**: los 10 reportes de auditoría y calificación (`qualification.json`, `uncertainty_calibration.json`, `training.json`, `metrics.json`, `candidate.json`, `experiment_manifest.json`, `audit_segments.json`, `audit_novelty.json`, `audit_sensitivity.json`, `feature_importance.json`) bajo `reports/` y el modelo PyFunc bajo `model`.
+- **Reporte de Tracking**: genera `artifacts/reports/tracking.json` con `run_id`, `model_uri`, `model_id` y metadatos para la Fase 7.
 
-Múltiples experimentos se comparan mediante distintos Runs en MLflow, sin entrenar automáticamente
-todos los modelos en una sola ejecución.
-
-`register-candidate` exige elegibilidad, un `run_id` y dicho artifact antes de crear una versión en
-`MLFLOW_MODEL_NAME`. No asigna aliases ni stages, no promueve, no despliega y no sirve inferencias. En
-entornos controlados, `ML_REQUIRE_CLEAN_GIT=true` exige un árbol de trabajo limpio.
+*Nota de gobernanza*: `track` **no** crea versiones en el Model Registry ni promueve modelos; esa responsabilidad corresponde exclusivamente a la Fase 7 (`register-candidate`).
 
 ## Lineage y outputs
 
