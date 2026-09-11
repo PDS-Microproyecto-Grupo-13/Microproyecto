@@ -116,6 +116,22 @@ python -m ml_pipeline track
 
 *Nota de gobernanza*: `track` **no** crea versiones en el Model Registry ni promueve modelos; esa responsabilidad corresponde exclusivamente a la Fase 7 (`register-candidate`).
 
+## Registro de Versión Candidata en Model Registry (Fase 7)
+
+Para registrar la versión candidata producida por el tracking run:
+
+```bash
+python -m ml_pipeline register-candidate
+```
+
+`register-candidate` es **intencionalmente externo a `dvc repro`**:
+- **Precondiciones estrictas**: valida la presencia de `artifacts/reports/candidate.json` y `artifacts/reports/tracking.json`, verifica que ambos declaren `eligible: true`, comprueba la coincidencia del `dataset_fingerprint`, verifica la existencia del Run en MLflow y comprueba que el modelo PyFunc origen pueda resolverse y cargarse.
+- **Idempotencia y prevención de duplicados**: antes de registrar, inspecciona las versiones registradas para el modelo (`salary-predictor`). Si ya existe una versión registrada asociada al mismo `run_id` o `model_uri`, reutiliza dicha versión en lugar de crear versiones duplicadas.
+- **Tags de candidato**: registra metadatos estructurados en la versión (`candidate: "true"`, `eligible: "true"`, `algorithm: "lightgbm"`, `dataset_fingerprint`, `run_id`, `primary_metric: "mae_promedio"`, `primary_metric_value`).
+- **Gobernanza de etapas**: **no** asigna alias de producción (`champion`) ni realiza transiciones de etapa. La promoción y asignación de alias corresponde a etapas posteriores en el ciclo de gobernanza.
+- **Verificación obligatoria de paridad**: carga el modelo directamente desde su URI canónica de registro (`models:/salary-predictor/<version>`) y valida paridad numérica estricta contra el modelo de tracking sobre `salary_min_usd`, `salary_max_usd`, `salary_midpoint_usd`, verificando además valores finitos, predicciones positivas, ordenamiento monotónico $y_{min} \le y_{max}$, punto medio exacto y respeto a los límites operativos de entrenamiento.
+- **Reporte de Registro**: persiste localmente `artifacts/reports/registration.json` con `model_name`, `version`, `run_id`, `exact_registry_uri`, `dataset_fingerprint` y métricas asociadas.
+
 ## Lineage y outputs
 
 `tracking/lineage.py` centraliza commit/estado Git, revisión de `dvc.yaml`, hash de
@@ -146,10 +162,19 @@ convertir hoy el proyecto en un framework genérico.
 ## Tests
 
 ```bash
-pytest
+pytest tests/ -v
 ```
 
-Las pruebas unitarias cubren validación, métricas, factoría de modelos (`logistic_regression` y `random_forest`), gate, configuración, lineage, normalización de parámetros y
-rechazo de registro. La integración recorre las cinco etapas DVC en un directorio
-temporal para ambos algoritmos y cubre el contrato automatizado `track -> register-candidate` sobre un backend SQLite temporal aislado. El contrato verifica el esquema de entrada, preprocessing encapsulado y
-predicciones binarias. Ninguna prueba requiere MLflow remoto ni `model_provider/`.
+Las pruebas unitarias y de integración cubren:
+- Ingesta multi-snapshot, deduplicación y preflight de snapshots DVC (`test_collect.py`).
+- Validación de datos y consistencia de esquemas (`test_validation.py`).
+- Paridad exacta del contrato de 24 features con el notebook de referencia (`test_features.py`).
+- Preprocesamiento, particionado temporal y límites operativos de entrenamiento (`test_preprocess.py`).
+- Calificación del modelo LightGBM y calibración de incertidumbre conjunta (`test_qualify.py`).
+- Entrenamiento final sobre `train + validation` y persistencia del bundle (`test_train.py`).
+- Evaluación final sobre test ciego e invariantes operacionales (`test_evaluate.py`).
+- Encapsulamiento PyFunc, serialización, input example y firmas (`test_pyfunc.py`).
+- Tracking en MLflow con métricas, tags, lineage y reportes (`test_tracking.py`).
+- Validación de precondiciones, idempotencia, tags y paridad numérica en Model Registry (`test_registry.py`).
+- Integración end-to-end de todo el ciclo de pipeline y contrato `track -> register-candidate` (`test_pipeline.py`, `test_tracking_registry.py`).
+

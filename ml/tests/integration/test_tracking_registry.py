@@ -1,7 +1,8 @@
 from pathlib import Path
 
 import mlflow
-import mlflow.sklearn
+import mlflow.pyfunc
+import numpy as np
 import pandas as pd
 import pytest
 from mlflow import MlflowClient
@@ -11,21 +12,32 @@ from ml_pipeline.data.collect import collect
 from ml_pipeline.data.preprocess import preprocess
 from ml_pipeline.data.validate import validate
 from ml_pipeline.modeling.evaluate import evaluate
+from ml_pipeline.modeling.pyfunc import OUTPUT_COLUMNS, create_input_example
+from ml_pipeline.modeling.qualify import qualify
 from ml_pipeline.modeling.train import train
 from ml_pipeline.settings import Settings
 from ml_pipeline.tracking.mlflow_tracker import track
 from ml_pipeline.tracking.registry import register_candidate
+import sys
+
+_here = Path(__file__).resolve().parent
+if str(_here) not in sys.path:
+    sys.path.insert(0, str(_here))
+
+from test_pipeline import synthetic_foorilla_env  # noqa: E402
 
 
-@pytest.mark.skip(reason="End-to-end tracking/registry tests belong to post-modeling migration phases")
-def test_track_and_register_candidate_contract(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_track_and_register_candidate_contract(
+    synthetic_foorilla_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tmp_path = synthetic_foorilla_env
     # 1. Setup isolated temporary MLflow backend and artifact store
     db_path = tmp_path / "mlflow.db"
     artifacts_dir = tmp_path / "mlartifacts"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     tracking_uri = f"sqlite:///{db_path}"
-    experiment_name = "test-experiment-integration"
-    model_name = "test-model-integration"
+    experiment_name = "test-salary-integration"
+    model_name = "salary-predictor-integration"
 
     monkeypatch.setenv("MLFLOW_TRACKING_URI", tracking_uri)
     monkeypatch.setenv("MLFLOW_EXPERIMENT_NAME", experiment_name)
@@ -34,103 +46,81 @@ def test_track_and_register_candidate_contract(tmp_path: Path, monkeypatch: pyte
     client = MlflowClient(tracking_uri=tracking_uri)
     client.create_experiment(experiment_name, artifact_location=artifacts_dir.as_uri())
 
-    # 2. Setup project params with baseline logistic_regression
-    (tmp_path / "params.yaml").write_text(
-        """data:
-  test_size: 0.2
-  random_state: 42
-model:
-  algorithm: logistic_regression
-  random_state: 42
-  logistic_regression:
-    C: 1.0
-    max_iter: 1000
-evaluation:
-  primary_metric: f1
-  minimum_score: 0.8
-""",
-        encoding="utf-8",
-    )
-
     settings = Settings.load(tmp_path)
 
-    # 3. Run pipeline stages to produce an evaluated eligible model
-    for stage in (collect, validate, preprocess, train, evaluate):
+    # 2. Run DVC pipeline stages through evaluate to produce an eligible model
+    for stage in (collect, validate, preprocess, qualify, train, evaluate):
         stage(settings)
 
-    # 4. Verify candidate is eligible before tracking
+    # 3. Verify candidate is eligible before tracking
     candidate_report = tmp_path / "artifacts/reports/candidate.json"
     assert candidate_report.is_file()
     candidate_data = read_json(candidate_report)
     assert candidate_data["eligible"] is True
 
-    # 5. Execute track
+    # 4. Execute track
     run_id = track(settings)
     assert isinstance(run_id, str) and len(run_id) > 0
 
-    # 6. Verify tracking.json
+    # 5. Verify tracking.json
     tracking_file = tmp_path / "artifacts/reports/tracking.json"
     assert tracking_file.is_file()
     tracking_data = read_json(tracking_file)
     assert tracking_data["run_id"] == run_id
-    assert tracking_data["algorithm"] == "logistic_regression"
-    assert "model_id" in tracking_data
+    assert tracking_data["algorithm"] == "lightgbm"
+    assert tracking_data["eligible"] is True
     assert "model_uri" in tracking_data
 
-    # 7. Verify MLflow Run in isolated backend
+    # 6. Verify MLflow Run in isolated backend
     run = client.get_run(run_id)
     assert run.info.run_id == run_id
-    assert run.data.tags.get("algorithm") == "logistic_regression"
-    assert run.data.params.get("model.algorithm") == "logistic_regression"
-    assert run.data.params.get("model.logistic_regression.C") == "1.0"
-    assert run.data.params.get("model.logistic_regression.max_iter") == "1000"
-    assert not any(k.startswith("model.random_forest") for k in run.data.params)
+    assert run.data.tags.get("algorithm") == "lightgbm"
+    assert run.data.params.get("model.algorithm") == "lightgbm"
 
-    # 8. Verify model artifact exists and can be retrieved / loaded
-    model_info = mlflow.models.get_model_info(tracking_data["model_uri"])
-    assert model_info.model_id == tracking_data["model_id"]
-    assert model_info.run_id == run_id
-    assert "sklearn" in model_info.flavors
+    # 7. Verify PyFunc model artifact exists and can be loaded
+    loaded_model = mlflow.pyfunc.load_model(tracking_data["model_uri"])
+    sample_features = create_input_example()
+    source_predictions = loaded_model.predict(sample_features)
+    assert len(source_predictions) == len(sample_features)
+    for col in OUTPUT_COLUMNS:
+        assert col in source_predictions.columns
 
-    loaded_model = mlflow.sklearn.load_model(tracking_data["model_uri"])
-    assert hasattr(loaded_model, "predict")
-
-    test_frame = pd.read_csv(tmp_path / "data/processed/test.csv")
-    sample_features = test_frame.drop(columns="target").head(5)
-    predictions = loaded_model.predict(sample_features)
-    assert len(predictions) == len(sample_features)
-
-    # 9. Execute register_candidate
+    # 8. Execute register_candidate
     version_str = register_candidate(settings)
-    assert isinstance(version_str, str) and len(version_str) > 0
+    assert version_str == "1"
 
-    # 10. Verify registered model exists in isolated registry
+    # 9. Verify registered model exists in isolated registry
     registered_model = client.get_registered_model(model_name)
     assert registered_model.name == model_name
 
-    # 11. Verify model version associated with run_id
+    # 10. Verify model version associated with run_id and correct tags
     model_version = client.get_model_version(name=model_name, version=version_str)
     assert str(model_version.version) == version_str
     assert model_version.run_id == run_id
-
-    # 12. Verify candidate=true tag preserved on Model Version
     assert model_version.tags.get("candidate") == "true"
+    assert model_version.tags.get("eligible") == "true"
+    assert model_version.tags.get("algorithm") == "lightgbm"
+    assert getattr(model_version, "aliases", []) == []
 
-    # 13. Verify registration.json generated
+    # 11. Verify registration.json generated
     registration_file = tmp_path / "artifacts/reports/registration.json"
     assert registration_file.is_file()
-
-    # 14. Verify registration.json schema and contents
     registration_data = read_json(registration_file)
     assert registration_data["model_name"] == model_name
     assert registration_data["version"] == version_str
     assert registration_data["run_id"] == run_id
+    assert registration_data["exact_registry_uri"] == f"models:/{model_name}/{version_str}"
 
-    # 15. Verify run_id matches between tracking and registration
-    assert registration_data["run_id"] == tracking_data["run_id"]
-
-    # 16. Verify registered model version can be loaded for inference
+    # 12. Verify registered model version loads and achieves parity
     registry_uri = f"models:/{model_name}/{version_str}"
-    loaded_version_model = mlflow.sklearn.load_model(registry_uri)
+    loaded_version_model = mlflow.pyfunc.load_model(registry_uri)
     reg_predictions = loaded_version_model.predict(sample_features)
-    assert (predictions == reg_predictions).all()
+    for col in OUTPUT_COLUMNS:
+        assert np.allclose(source_predictions[col], reg_predictions[col], rtol=1e-5, atol=1e-5)
+
+    # 13. Verify deduplication: re-running register_candidate returns same version and does not create version 2
+    v2 = register_candidate(settings)
+    assert v2 == "1"
+    versions = client.search_model_versions(f"name = '{model_name}'")
+    assert len(versions) == 1
+
