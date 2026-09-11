@@ -147,12 +147,14 @@ def resolve_model_info(client: MlflowClient, config: ServingConfig) -> ResolvedM
         creation_timestamp=getattr(model_version, "creation_timestamp", None),
     )
 
+    exact_model_uri = f"models:/{resolved_info.model_name}/{resolved_info.version}"
     log_event(
         "INFO",
         "model_resolved",
-        model=resolved_info.model_name,
-        alias=resolved_info.model_alias,
-        version=resolved_info.version,
+        model_name=resolved_info.model_name,
+        requested_alias=resolved_info.model_alias,
+        resolved_version=resolved_info.version,
+        exact_model_uri=exact_model_uri,
         run_id=resolved_info.run_id,
     )
 
@@ -182,11 +184,14 @@ def build_serve_command(config: ServingConfig, model_info: ResolvedModelInfo) ->
 
 def run_serving_process(cmd: list[str], model_info: ResolvedModelInfo, tracking_uri: str) -> int:
     """Launches the MLflow serving subprocess and manages OS termination signals."""
+    exact_model_uri = f"models:/{model_info.model_name}/{model_info.version}"
     log_event(
         "INFO",
         "model_server_starting",
-        model=model_info.model_name,
-        version=model_info.version,
+        model_name=model_info.model_name,
+        requested_alias=model_info.model_alias,
+        resolved_version=model_info.version,
+        exact_model_uri=exact_model_uri,
         command=" ".join(cmd),
     )
 

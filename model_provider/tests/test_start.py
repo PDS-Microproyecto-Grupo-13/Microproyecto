@@ -162,3 +162,70 @@ def test_build_serve_command():
     assert cmd[cmd.index("--port") + 1] == "5001"
     assert "--env-manager" in cmd
     assert cmd[cmd.index("--env-manager") + 1] == "local"
+
+
+def test_load_config_from_env_salary_predictor(monkeypatch):
+    """Test loading configuration specifically for canonical salary-predictor."""
+    monkeypatch.setenv("MODEL_NAME", "salary-predictor")
+    monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://mlflow-tracking:5000")
+    monkeypatch.setenv("MODEL_ALIAS", "champion")
+    monkeypatch.setenv("INFERENCE_PORT", "5001")
+
+    config = load_config_from_env()
+    assert config.model_name == "salary-predictor"
+    assert config.model_alias == "champion"
+    assert config.port == 5001
+    assert config.tracking_uri == "http://mlflow-tracking:5000"
+
+
+def test_resolve_model_info_salary_predictor_champion(mock_mlflow_client, mock_model_version):
+    """Test resolving salary-predictor@champion returns concrete version 1."""
+    mock_mlflow_client.get_registered_model.return_value = {"name": "salary-predictor"}
+    mock_model_version.version = "1"
+    mock_model_version.run_id = "run-db1fd1"
+    mock_mlflow_client.get_model_version_by_alias.return_value = mock_model_version
+
+    config = ServingConfig(
+        tracking_uri="http://localhost:5000",
+        model_name="salary-predictor",
+        model_alias="champion",
+        host="0.0.0.0",
+        port=5001,
+    )
+
+    info = resolve_model_info(mock_mlflow_client, config)
+    assert info.model_name == "salary-predictor"
+    assert info.model_alias == "champion"
+    assert info.version == "1"
+    assert info.run_id == "run-db1fd1"
+
+
+def test_build_serve_command_exact_version_pinning_no_hot_reload():
+    """Test that build_serve_command fixes the version immutably preventing hot-reload."""
+    from model_provider.inference.start import ResolvedModelInfo
+
+    config = ServingConfig(
+        tracking_uri="http://localhost:5000",
+        model_name="salary-predictor",
+        model_alias="champion",
+        host="0.0.0.0",
+        port=5001,
+    )
+
+    model_info = ResolvedModelInfo(
+        model_name="salary-predictor",
+        model_alias="champion",
+        version="1",
+        run_id="run-db1fd1",
+        source=None,
+        creation_timestamp=None,
+    )
+
+    cmd = build_serve_command(config, model_info)
+
+    # Must be pinned to concrete version /1, never to alias @champion
+    assert "--model-uri" in cmd
+    uri_idx = cmd.index("--model-uri") + 1
+    assert cmd[uri_idx] == "models:/salary-predictor/1"
+    assert "@" not in cmd[uri_idx]
+

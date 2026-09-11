@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 # Prevent Python from buffering stdout/stderr and writing .pyc files
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -6,9 +6,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install curl for diagnostic and healthchecks
+# Install curl for diagnostic/healthchecks and libgomp1 for LightGBM OpenMP support
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl && \
+    apt-get install -y --no-install-recommends curl libgomp1 && \
     rm -rf /var/lib/apt/lists/*
 
 # Install pinned dependencies
