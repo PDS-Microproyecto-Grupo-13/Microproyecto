@@ -34,7 +34,7 @@ cp .env.example .env
 `requirements.lock.txt` instala también el paquete local en modo editable, por lo
 que la CLI queda disponible sin configurar `PYTHONPATH`.
 
-## Pipeline reproducible (Fase 5: Ingesta, Validación, Preprocesamiento, Calificación, Entrenamiento y Evaluación Final sobre TEST)
+## Pipeline reproducible
 
 Actualmente el pipeline DVC gobierna de forma reproducible las 6 etapas completas del ciclo de modelado salarial:
 
@@ -86,8 +86,6 @@ dvc repro
   - `artifacts/reports/validation.json`: conteos por `target_source` y estadísticas de validación.
   - `artifacts/reports/preprocess.json`: resumen de splits, rangos de fechas, contrato de 24 features y metadata de reproducibilidad.
 
-*Nota de gobernanza*: La partición `test.parquet` fue evaluada por primera y única vez en `evaluate`, sin retroalimentación, sin recalibración y sin ajuste de hiperparámetros. Las fases subsiguientes abordarán el registro del candidato y el tracking en MLflow.
-
 ## Tracking y empaquetado PyFunc (Fase 6)
 
 Configure `.env` para apuntar a un servidor MLflow:
@@ -114,7 +112,7 @@ python -m ml_pipeline track
 - **Artifacts**: los 10 reportes de auditoría y calificación (`qualification.json`, `uncertainty_calibration.json`, `training.json`, `metrics.json`, `candidate.json`, `experiment_manifest.json`, `audit_segments.json`, `audit_novelty.json`, `audit_sensitivity.json`, `feature_importance.json`) bajo `reports/` y el modelo PyFunc bajo `model`.
 - **Reporte de Tracking**: genera `artifacts/reports/tracking.json` con `run_id`, `model_uri`, `model_id` y metadatos para la Fase 7.
 
-*Nota de gobernanza*: `track` **no** crea versiones en el Model Registry ni promueve modelos; esa responsabilidad corresponde exclusivamente a la Fase 7 (`register-candidate`).
+*Nota de gobernanza*: `track` **no** crea versiones en el Model Registry ni promueve modelos; esa responsabilidad corresponde exclusivamente a `register-candidate`.
 
 ## Registro de Versión Candidata en Model Registry (Fase 7)
 
