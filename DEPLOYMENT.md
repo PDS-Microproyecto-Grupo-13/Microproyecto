@@ -168,19 +168,15 @@ Compare las métricas de **validación** en MLflow. No use el conjunto de prueba
 para escoger hiperparámetros: si se elige mirando la prueba, la prueba deja de
 medir generalización. Después promueva la versión elegida:
 
-```powershell
-.venv\Scripts\python.exe model_provider\scripts\promote_model.py `
-  --model salary_predict_model `
-  --version VERSION `
-  --alias champion `
-  --tracking-uri http://<IP>:5000
+```bash
+python model_provider/scripts/promote_model.py \
+  --model salary-predictor \
+  --version VERSION \
+  --alias champion \
+  --tracking-uri http://localhost:5000
 ```
 
-Promover es mover una etiqueta, no reconstruir nada. Para que el cambio surta
-efecto hay que reiniciar el servicio de inferencia: resuelve el alias **una sola
-vez, al arrancar**, y sirve esa versión durante toda su vida. Esto evita que una
-promoción cambie en silencio un proceso que ya está atendiendo solicitudes, y
-permite revertir rápido reasignando el alias a la versión anterior.
+Promover es mover una etiqueta en el Registry; no altera procesos en ejecución (`PROMOTE != DEPLOY`). Para que el cambio surta efecto hay que reiniciar explícitamente el servicio de inferencia: resuelve el alias **una sola vez, al arrancar**, y sirve esa versión durante toda su vida. Esto evita que una promoción cambie en silencio un proceso en producción y garantiza la inmutabilidad de serving.
 
 ## 6. Levantar todo con Docker Compose
 
@@ -195,6 +191,7 @@ Servicios:
 - API y Swagger: `http://localhost:8000/docs`
 - MLflow: `http://localhost:5000`
 - Inferencia interna: `http://localhost:5001/invocations`
+- Inferencia status runtime: `http://localhost:5002/status`
 
 El servicio de inferencia lee `MLFLOW_TRACKING_URI` del entorno, así que también
 puede apuntarse al MLflow de EC2 definiendo la variable en `.env` antes de
@@ -218,18 +215,60 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/v1/predictions `
   -ContentType application/json -Body $body
 ```
 
-Devuelve el rango mínimo, máximo y punto medio, junto con el nombre y el alias
-del modelo que respondió.
+Devuelve el rango mínimo, máximo y punto medio, junto con el nombre, alias
+y versión del modelo que respondió.
 
-## 8. Desplegar una versión posterior
+## 8. Ciclo Operacional de Despliegue, Drift y Rollback
 
-1. Ejecute un nuevo experimento con `--register-model`, sin alias.
-2. Compare el candidato con el campeón usando métricas de validación y segmentos.
-3. Promueva la versión con `promote_model.py`.
-4. Reinicie sólo la inferencia: la terminal 1 de la sección 2, o
-   `docker compose restart inference`.
-5. Ejecute la prueba de la sección 7. El backend y el tablero no requieren
-   ningún cambio.
+El servicio de serving fija la versión concreta del modelo al momento de arrancar (`start.py`) y expone su estado runtime en el puerto `5002`.
+
+```
+Promoción
+   ↓ (promote_model.py)
+Registry cambia champion
+   ↓
+Comprobación
+   ↓ (check_alignment.py -> redeploy_required, exit code 2)
+Redeploy explícito
+   ↓ (docker compose restart inference)
+Verificación
+   ↓ (check_alignment.py -> synchronized, exit code 0)
+Rollback (si se requiere revertir)
+   ↓ (promote_model.py a versión previa)
+   ↓ (check_alignment.py -> redeploy_required)
+   ↓ (docker compose restart inference)
+   ↓ (check_alignment.py -> synchronized)
+```
+
+### Paso a paso:
+
+1. **Promoción de una nueva versión**:
+   ```bash
+   python model_provider/scripts/promote_model.py --model salary-predictor --version <NUEVA_VERSION> --alias champion
+   ```
+2. **Detección de Drift operacional**:
+   ```bash
+   python model_provider/scripts/check_alignment.py
+   ```
+   Retornará código de salida `2` y estado `REDEPLOY REQUIRED`. La inferencia continúa sirviendo la versión previa sin interrupción.
+3. **Redeploy explícito**:
+   ```bash
+   docker compose restart inference
+   ```
+   > **Nota Operacional**: El reinicio produce una pequeña ventana de indisponibilidad temporal (~5 a 15 segundos) mientras el proceso uvicorn/LightGBM se descarga y recarga en memoria. Mecanismos como blue-green o zero-downtime quedan fuera de alcance para esta fase.
+4. **Verificación de sincronización**:
+   ```bash
+   python model_provider/scripts/check_alignment.py
+   ```
+   Retornará código `0` y estado `SYNCHRONIZED`.
+5. **Procedimiento de Rollback**:
+   Para regresar a la versión previa:
+   ```bash
+   python model_provider/scripts/promote_model.py --model salary-predictor --version <VERSION_ANTERIOR> --alias champion
+   python model_provider/scripts/check_alignment.py  # Reporta redeploy_required
+   docker compose restart inference                 # Recarga versión anterior
+   python model_provider/scripts/check_alignment.py  # Reporta synchronized
+   ```
 
 ## Verificación local
 
