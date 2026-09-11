@@ -19,7 +19,7 @@ def mock_model_version():
     mv.source = "file:///var/lib/mlflow/artifacts/1/models"
     mv.creation_timestamp = 1724000000000
     mv.status = "READY"
-    mv.tags = {"env": "prod"}
+    mv.tags = {"env": "prod", "eligible": "true"}
     return mv
 
 
