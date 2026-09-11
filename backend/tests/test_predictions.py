@@ -156,4 +156,57 @@ def test_model_name_settings():
     settings = Settings()
     assert settings.MODEL_NAME == "salary-predictor"
     assert settings.MODEL_ALIAS == "champion"
+    assert settings.INFERENCE_STATUS_URL == "http://inference:5002/status"
+
+
+@pytest.mark.asyncio
+async def test_prediction_endpoint_includes_runtime_version(client) -> None:
+    class VersionedInferenceClient:
+        async def predict(self, record: dict[str, object]) -> dict[str, float]:
+            return {
+                "salary_min_usd": 80000.0,
+                "salary_max_usd": 120000.0,
+                "salary_midpoint_usd": 100000.0,
+            }
+
+        async def get_runtime_status(self) -> dict[str, object]:
+            return {
+                "status": "ok",
+                "loaded_version": "1",
+                "model_name": "salary-predictor",
+            }
+
+    app = client._transport.app
+    app.dependency_overrides[get_inference_client] = lambda: VersionedInferenceClient()
+    try:
+        response = await client.post(
+            "/api/v1/predictions",
+            json={
+                "title": "Machine Learning Engineer",
+                "experience_level": "MI",
+                "country": "Colombia",
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["model"]["name"] == "salary-predictor"
+        assert body["model"]["alias"] == "champion"
+        assert body["model"]["version"] == "1"
+
+        # Also test GET /api/v1/predictions/model
+        model_resp = await client.get("/api/v1/predictions/model")
+        assert model_resp.status_code == 200
+        model_body = model_resp.json()
+        assert model_body["name"] == "salary-predictor"
+        assert model_body["version"] == "1"
+
+        # Also test GET /api/v1/predictions/status
+        status_resp = await client.get("/api/v1/predictions/status")
+        assert status_resp.status_code == 200
+        status_body = status_resp.json()
+        assert status_body["configured_model"] == "salary-predictor"
+        assert status_body["runtime_inference"]["loaded_version"] == "1"
+    finally:
+        app.dependency_overrides.pop(get_inference_client, None)
+
 

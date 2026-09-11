@@ -1,10 +1,13 @@
+import json
 import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import dataclass
-from typing import Any
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any, Callable
 
 import mlflow
 from mlflow.exceptions import MlflowException
@@ -20,6 +23,7 @@ class ServingConfig:
     model_alias: str
     host: str
     port: int
+    status_port: int = 5002
     env_manager: str = "local"
 
 
@@ -66,12 +70,20 @@ def load_config_from_env() -> ServingConfig:
         log_event("ERROR", "startup_failed", error=f"Invalid port value: '{port_str}'")
         sys.exit(1)
 
+    status_port_str = os.getenv("INFERENCE_STATUS_PORT", "5002").strip()
+    try:
+        status_port = int(status_port_str)
+    except ValueError:
+        log_event("WARN", "invalid_status_port", value=status_port_str)
+        status_port = 5002
+
     return ServingConfig(
         tracking_uri=tracking_uri,
         model_name=model_name.strip(),
         model_alias=model_alias,
         host=host,
         port=port,
+        status_port=status_port,
     )
 
 
@@ -182,8 +194,60 @@ def build_serve_command(config: ServingConfig, model_info: ResolvedModelInfo) ->
     ]
 
 
-def run_serving_process(cmd: list[str], model_info: ResolvedModelInfo, tracking_uri: str) -> int:
-    """Launches the MLflow serving subprocess and manages OS termination signals."""
+class StatusHandler(BaseHTTPRequestHandler):
+    """Minimal HTTP handler to report serving runtime status and metadata."""
+
+    def log_message(self, format: str, *args: Any) -> None:
+        # Suppress standard HTTP access log spam
+        pass
+
+    def do_GET(self) -> None:
+        server: InferenceStatusServer = self.server  # type: ignore[assignment]
+        if self.path in ("/status", "/status/"):
+            data = server.status_callback()
+            is_running = data.get("model_server_running", False)
+            status_code = 200 if is_running else 503
+            body = json.dumps(data, indent=2).encode("utf-8")
+            self.send_response(status_code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        elif self.path in ("/health", "/healthz", "/ping"):
+            data = server.status_callback()
+            is_running = data.get("model_server_running", False)
+            status_code = 200 if is_running else 503
+            body = json.dumps({"status": "healthy" if is_running else "unhealthy"}).encode("utf-8")
+            self.send_response(status_code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+
+class InferenceStatusServer(ThreadingHTTPServer):
+    """Threading HTTP server that carries a status provider callback."""
+
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        status_callback: Callable[[], dict[str, Any]],
+    ) -> None:
+        self.status_callback = status_callback
+        super().__init__(server_address, StatusHandler)
+
+
+def run_serving_process(
+    cmd: list[str],
+    model_info: ResolvedModelInfo,
+    tracking_uri: str,
+    status_host: str = "0.0.0.0",
+    status_port: int = 5002,
+) -> int:
+    """Launches the MLflow serving subprocess and manages OS termination signals and status server."""
     exact_model_uri = f"models:/{model_info.model_name}/{model_info.version}"
     log_event(
         "INFO",
@@ -199,6 +263,45 @@ def run_serving_process(cmd: list[str], model_info: ResolvedModelInfo, tracking_
     env["MLFLOW_TRACKING_URI"] = tracking_uri
 
     process = subprocess.Popen(cmd, env=env)
+    started_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    def get_status() -> dict[str, Any]:
+        is_running = process.poll() is None
+        return {
+            "status": "ok" if is_running else "error",
+            "model_name": model_info.model_name,
+            "requested_alias": model_info.model_alias,
+            "resolved_version": model_info.version,
+            "loaded_version": model_info.version,
+            "exact_model_uri": exact_model_uri,
+            "run_id": model_info.run_id,
+            "source": model_info.source,
+            "model_server_pid": process.pid,
+            "model_server_running": is_running,
+            "started_at": started_at,
+        }
+
+    status_server: InferenceStatusServer | None = None
+    if status_port > 0:
+        try:
+            status_server = InferenceStatusServer((status_host, status_port), get_status)
+            status_thread = threading.Thread(target=status_server.serve_forever, daemon=True)
+            status_thread.start()
+            log_event(
+                "INFO",
+                "status_server_started",
+                host=status_host,
+                port=status_port,
+                loaded_version=model_info.version,
+            )
+        except Exception as exc:
+            log_event(
+                "WARN",
+                "status_server_failed_to_start",
+                host=status_host,
+                port=status_port,
+                error=str(exc),
+            )
 
     def signal_handler(signum: int, _frame: Any) -> None:
         signame = signal.Signals(signum).name
@@ -211,11 +314,24 @@ def run_serving_process(cmd: list[str], model_info: ResolvedModelInfo, tracking_
         )
         if process.poll() is None:
             process.terminate()
+        if status_server is not None:
+            try:
+                status_server.shutdown()
+            except Exception:
+                pass
 
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
 
     return_code = process.wait()
+
+    if status_server is not None:
+        try:
+            status_server.shutdown()
+            status_server.server_close()
+        except Exception:
+            pass
+
     log_event(
         "INFO",
         "model_server_stopped",
@@ -240,7 +356,13 @@ def main() -> None:
         sys.exit(1)
 
     cmd = build_serve_command(config, model_info)
-    exit_code = run_serving_process(cmd, model_info, config.tracking_uri)
+    exit_code = run_serving_process(
+        cmd,
+        model_info,
+        config.tracking_uri,
+        status_host=config.host,
+        status_port=config.status_port,
+    )
     sys.exit(exit_code)
 
 

@@ -29,6 +29,7 @@ class Settings(BaseSettings):
 
     # External Inference Service
     INFERENCE_BASE_URL: str = "http://inference:5001"
+    INFERENCE_STATUS_URL: str = "http://inference:5002/status"
     INFERENCE_TIMEOUT_SECONDS: float = 10.0
     MODEL_NAME: str = "salary-predictor"
     MODEL_ALIAS: str = "champion"

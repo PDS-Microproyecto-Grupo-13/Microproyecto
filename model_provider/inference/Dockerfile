@@ -18,6 +18,6 @@ RUN pip install --no-cache-dir -r requirements.lock.txt
 # Copy operational start script and healthcheck
 COPY start.py healthcheck.py ./
 
-EXPOSE 5001
+EXPOSE 5001 5002
 
 CMD ["python", "start.py"]

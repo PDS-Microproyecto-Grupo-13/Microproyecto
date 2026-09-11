@@ -53,6 +53,7 @@ class SalaryRange(BaseModel):
 class ModelDeployment(BaseModel):
     name: str
     alias: str
+    version: str | None = None
 
 
 class SalaryPredictionResponse(BaseModel):

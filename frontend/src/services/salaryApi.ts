@@ -5,7 +5,7 @@ export interface SalaryPredictionRequest {
 }
 export interface SalaryPredictionResponse {
   prediction: { minimum_usd: number; maximum_usd: number; midpoint_usd: number };
-  model: { name: string; alias: string }; warnings: string[];
+  model: { name: string; alias: string; version?: string | null }; warnings: string[];
 }
 export async function predictSalary(request: SalaryPredictionRequest): Promise<SalaryPredictionResponse> {
   const response = await fetch("/api/v1/predictions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) });

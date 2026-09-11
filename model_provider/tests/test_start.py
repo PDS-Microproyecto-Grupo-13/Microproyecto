@@ -229,3 +229,77 @@ def test_build_serve_command_exact_version_pinning_no_hot_reload():
     assert cmd[uri_idx] == "models:/salary-predictor/1"
     assert "@" not in cmd[uri_idx]
 
+
+def test_load_config_from_env_custom_status_port(monkeypatch):
+    """Test parsing custom INFERENCE_STATUS_PORT."""
+    monkeypatch.setenv("MODEL_NAME", "salary-predictor")
+    monkeypatch.setenv("INFERENCE_STATUS_PORT", "5005")
+    config = load_config_from_env()
+    assert config.status_port == 5005
+
+
+def test_load_config_from_env_invalid_status_port(monkeypatch):
+    """Test invalid status port falls back to default 5002."""
+    monkeypatch.setenv("MODEL_NAME", "salary-predictor")
+    monkeypatch.setenv("INFERENCE_STATUS_PORT", "not_a_number")
+    config = load_config_from_env()
+    assert config.status_port == 5002
+
+
+def test_status_server_endpoints():
+    """Test InferenceStatusServer handles /status, /health, and error states correctly."""
+    import json
+    import threading
+    import urllib.error
+    import urllib.request
+    from model_provider.inference.start import InferenceStatusServer
+
+    state = {"running": True}
+
+    def dummy_status():
+        return {
+            "status": "ok" if state["running"] else "error",
+            "model_name": "salary-predictor",
+            "requested_alias": "champion",
+            "resolved_version": "1",
+            "loaded_version": "1",
+            "model_server_running": state["running"],
+        }
+
+    server = InferenceStatusServer(("127.0.0.1", 0), dummy_status)
+    port = server.server_port
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+
+    try:
+        # 1. Test /status when running
+        url_status = f"http://127.0.0.1:{port}/status"
+        with urllib.request.urlopen(url_status) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode())
+            assert data["status"] == "ok"
+            assert data["loaded_version"] == "1"
+            assert data["model_server_running"] is True
+
+        # 2. Test /health when running
+        url_health = f"http://127.0.0.1:{port}/health"
+        with urllib.request.urlopen(url_health) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode())
+            assert data["status"] == "healthy"
+
+        # 3. Test /status when not running returns 503
+        state["running"] = False
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
+            urllib.request.urlopen(url_status)
+        assert exc_info.value.code == 503
+
+        # 4. Test 404 for unknown route
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
+            urllib.request.urlopen(f"http://127.0.0.1:{port}/unknown")
+        assert exc_info.value.code == 404
+
+    finally:
+        server.shutdown()
+        server.server_close()
+

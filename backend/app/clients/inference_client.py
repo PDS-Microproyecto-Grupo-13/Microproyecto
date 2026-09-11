@@ -5,6 +5,8 @@ from typing import Any
 
 from fastapi import Depends
 
+import httpx
+
 from app.clients.base_http_client import BaseHttpClient
 from app.core.config import Settings, get_settings
 from app.core.exceptions import ExternalServiceError
@@ -13,8 +15,9 @@ from app.core.exceptions import ExternalServiceError
 class InferenceClient(BaseHttpClient):
     """Adapter for the MLflow scoring protocol."""
 
-    def __init__(self, base_url: str, timeout: float) -> None:
+    def __init__(self, base_url: str, timeout: float, status_url: str | None = None) -> None:
         super().__init__("mlflow-inference", base_url, timeout)
+        self.status_url = status_url
 
     async def predict(self, record: dict[str, object]) -> dict[str, float]:
         import math
@@ -87,6 +90,19 @@ class InferenceClient(BaseHttpClient):
             "salary_midpoint_usd": mid_usd,
         }
 
+    async def get_runtime_status(self) -> dict[str, Any] | None:
+        """Safely probes the inference status server without blocking or breaking inference."""
+        if not self.status_url:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=2.0) as client:
+                response = await client.get(self.status_url)
+                if response.status_code == 200:
+                    return response.json()
+        except Exception:
+            return None
+        return None
+
 
 async def get_inference_client(
     settings: Settings = Depends(get_settings),
@@ -94,5 +110,6 @@ async def get_inference_client(
     async with InferenceClient(
         base_url=settings.INFERENCE_BASE_URL,
         timeout=settings.INFERENCE_TIMEOUT_SECONDS,
+        status_url=settings.INFERENCE_STATUS_URL,
     ) as client:
         yield client
