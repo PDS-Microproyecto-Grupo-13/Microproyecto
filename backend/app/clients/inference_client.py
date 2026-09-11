@@ -17,6 +17,8 @@ class InferenceClient(BaseHttpClient):
         super().__init__("mlflow-inference", base_url, timeout)
 
     async def predict(self, record: dict[str, object]) -> dict[str, float]:
+        import math
+
         payload = {
             "dataframe_split": {
                 "columns": list(record),
@@ -26,10 +28,10 @@ class InferenceClient(BaseHttpClient):
         response = await self.post("/invocations", json_data=payload)
         body: dict[str, Any] = response.json()
         predictions = body.get("predictions")
-        if not isinstance(predictions, list) or not predictions:
+        if not isinstance(predictions, list) or len(predictions) != 1:
             raise ExternalServiceError(
                 service_name=self.service_name,
-                message="Inference response does not contain predictions",
+                message="Inference response must contain exactly one prediction",
                 details={"response": body},
             )
         prediction = predictions[0]
@@ -40,17 +42,50 @@ class InferenceClient(BaseHttpClient):
                 details={"response": body},
             )
         try:
-            return {
-                "salary_min_usd": float(prediction["salary_min_usd"]),
-                "salary_max_usd": float(prediction["salary_max_usd"]),
-                "salary_midpoint_usd": float(prediction["salary_midpoint_usd"]),
-            }
+            min_usd = float(prediction["salary_min_usd"])
+            max_usd = float(prediction["salary_max_usd"])
+            mid_usd = float(prediction["salary_midpoint_usd"])
         except (KeyError, TypeError, ValueError) as exc:
             raise ExternalServiceError(
                 service_name=self.service_name,
                 message="Inference response is missing salary-range fields",
                 details={"response": body},
             ) from exc
+
+        if not (math.isfinite(min_usd) and math.isfinite(max_usd) and math.isfinite(mid_usd)):
+            raise ExternalServiceError(
+                service_name=self.service_name,
+                message="Inference response contains non-finite salary values",
+                details={"response": body},
+            )
+
+        if min_usd <= 0 or max_usd <= 0 or mid_usd <= 0:
+            raise ExternalServiceError(
+                service_name=self.service_name,
+                message="Inference response contains non-positive salary values",
+                details={"response": body},
+            )
+
+        if min_usd > max_usd:
+            raise ExternalServiceError(
+                service_name=self.service_name,
+                message="Inference response has minimum salary greater than maximum salary",
+                details={"response": body},
+            )
+
+        expected_midpoint = (min_usd + max_usd) / 2.0
+        if not math.isclose(mid_usd, expected_midpoint, rel_tol=1e-4, abs_tol=1e-2):
+            raise ExternalServiceError(
+                service_name=self.service_name,
+                message="Inference response has inconsistent midpoint",
+                details={"response": body},
+            )
+
+        return {
+            "salary_min_usd": min_usd,
+            "salary_max_usd": max_usd,
+            "salary_midpoint_usd": mid_usd,
+        }
 
 
 async def get_inference_client(

@@ -54,3 +54,106 @@ async def test_prediction_request_validation(client) -> None:
         },
     )
     assert response.status_code == 422
+
+
+EXPECTED_PYFUNC_COLUMNS = {
+    "title",
+    "company",
+    "company_is_agency",
+    "countries",
+    "regions",
+    "experience_level",
+    "experience_years",
+    "has_remote",
+    "work_mode",
+    "tags",
+    "published",
+}
+
+
+def test_to_mlflow_record_minimal_request_produces_11_columns():
+    from datetime import datetime
+    from app.schemas.prediction import SalaryPredictionRequest
+
+    req = SalaryPredictionRequest(
+        title="Software Engineer",
+        experience_level="MI",
+        country="Colombia",
+    )
+    record = req.to_mlflow_record()
+    assert set(record.keys()) == EXPECTED_PYFUNC_COLUMNS
+    assert len(record) == 11
+    assert record["title"] == "Software Engineer"
+    assert record["countries"] == "Colombia"
+    assert record["regions"] == "desconocido"
+    assert record["has_remote"] is False
+    assert record["work_mode"] is None
+    assert record["company"] == "Sin información"
+    assert record["company_is_agency"] is False
+    assert record["tags"] == ""
+    assert record["experience_years"] is None
+    dt = datetime.fromisoformat(str(record["published"]))
+    assert dt.tzinfo is not None
+
+
+def test_to_mlflow_record_region_preserved():
+    from app.schemas.prediction import SalaryPredictionRequest
+
+    req = SalaryPredictionRequest(
+        title="ML Engineer",
+        experience_level="SE",
+        country="Germany",
+        region="Europe",
+    )
+    record = req.to_mlflow_record()
+    assert record["regions"] == "Europe"
+
+
+def test_to_mlflow_record_regions_alternative_preserved():
+    from app.schemas.prediction import SalaryPredictionRequest
+
+    req = SalaryPredictionRequest(
+        title="ML Engineer",
+        experience_level="SE",
+        country="Germany",
+        regions="Europe",
+    )
+    record = req.to_mlflow_record()
+    assert record["regions"] == "Europe"
+
+
+def test_to_mlflow_record_work_mode_preserved():
+    from app.schemas.prediction import SalaryPredictionRequest
+
+    req = SalaryPredictionRequest(
+        title="Data Engineer",
+        experience_level="SE",
+        country="Brazil",
+        is_remote=True,
+        work_mode=2,
+    )
+    record = req.to_mlflow_record()
+    assert record["has_remote"] is True
+    assert record["work_mode"] == 2
+
+
+def test_to_mlflow_record_technologies_mapped_to_tags():
+    from app.schemas.prediction import SalaryPredictionRequest
+
+    req = SalaryPredictionRequest(
+        title="DevOps Engineer",
+        experience_level="SE",
+        country="United States",
+        technologies=["docker", "kubernetes", "aws"],
+    )
+    record = req.to_mlflow_record()
+    assert record["tags"] == "docker|kubernetes|aws"
+
+
+def test_model_name_settings():
+    from app.core.config import Settings
+
+    settings = Settings()
+    assert settings.MODEL_NAME == "salary-predictor"
+    assert settings.MODEL_ALIAS == "champion"
+

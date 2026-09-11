@@ -52,3 +52,167 @@ async def test_base_http_client_translates_http_error() -> None:
         assert exc_info.value.status_code == 502
     finally:
         await client.close()
+
+
+@pytest.mark.asyncio
+async def test_inference_client_predict_success() -> None:
+    from app.clients.inference_client import InferenceClient
+
+    def mock_handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "predictions": [
+                    {
+                        "salary_min_usd": 100000.0,
+                        "salary_max_usd": 150000.0,
+                        "salary_midpoint_usd": 125000.0,
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(mock_handler)
+    client = InferenceClient(base_url="http://inference.local", timeout=5.0)
+    client._client = httpx.AsyncClient(transport=transport, base_url="http://inference.local")
+
+    try:
+        res = await client.predict({"title": "Engineer"})
+        assert res["salary_min_usd"] == 100000.0
+        assert res["salary_max_usd"] == 150000.0
+        assert res["salary_midpoint_usd"] == 125000.0
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_inference_client_rejects_empty_predictions() -> None:
+    from app.clients.inference_client import InferenceClient
+
+    def mock_handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"predictions": []})
+
+    transport = httpx.MockTransport(mock_handler)
+    client = InferenceClient(base_url="http://inference.local", timeout=5.0)
+    client._client = httpx.AsyncClient(transport=transport, base_url="http://inference.local")
+
+    try:
+        with pytest.raises(ExternalServiceError) as exc_info:
+            await client.predict({"title": "Engineer"})
+        assert "must contain exactly one prediction" in exc_info.value.message
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_inference_client_rejects_multiple_predictions() -> None:
+    from app.clients.inference_client import InferenceClient
+
+    def mock_handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "predictions": [
+                    {"salary_min_usd": 100.0, "salary_max_usd": 200.0, "salary_midpoint_usd": 150.0},
+                    {"salary_min_usd": 100.0, "salary_max_usd": 200.0, "salary_midpoint_usd": 150.0},
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(mock_handler)
+    client = InferenceClient(base_url="http://inference.local", timeout=5.0)
+    client._client = httpx.AsyncClient(transport=transport, base_url="http://inference.local")
+
+    try:
+        with pytest.raises(ExternalServiceError) as exc_info:
+            await client.predict({"title": "Engineer"})
+        assert "must contain exactly one prediction" in exc_info.value.message
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_inference_client_rejects_non_finite_salary() -> None:
+    from app.clients.inference_client import InferenceClient
+
+    def mock_handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "predictions": [
+                    {"salary_min_usd": "NaN", "salary_max_usd": 200.0, "salary_midpoint_usd": 150.0}
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(mock_handler)
+    client = InferenceClient(base_url="http://inference.local", timeout=5.0)
+    client._client = httpx.AsyncClient(transport=transport, base_url="http://inference.local")
+
+    try:
+        with pytest.raises(ExternalServiceError) as exc_info:
+            await client.predict({"title": "Engineer"})
+        assert "non-finite" in exc_info.value.message
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_inference_client_rejects_inverted_range() -> None:
+    from app.clients.inference_client import InferenceClient
+
+    def mock_handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "predictions": [
+                    {
+                        "salary_min_usd": 200000.0,
+                        "salary_max_usd": 100000.0,
+                        "salary_midpoint_usd": 150000.0,
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(mock_handler)
+    client = InferenceClient(base_url="http://inference.local", timeout=5.0)
+    client._client = httpx.AsyncClient(transport=transport, base_url="http://inference.local")
+
+    try:
+        with pytest.raises(ExternalServiceError) as exc_info:
+            await client.predict({"title": "Engineer"})
+        assert "greater than maximum" in exc_info.value.message
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_inference_client_rejects_inconsistent_midpoint() -> None:
+    from app.clients.inference_client import InferenceClient
+
+    def mock_handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "predictions": [
+                    {
+                        "salary_min_usd": 100000.0,
+                        "salary_max_usd": 200000.0,
+                        "salary_midpoint_usd": 190000.0,  # Expected 150000.0
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(mock_handler)
+    client = InferenceClient(base_url="http://inference.local", timeout=5.0)
+    client._client = httpx.AsyncClient(transport=transport, base_url="http://inference.local")
+
+    try:
+        with pytest.raises(ExternalServiceError) as exc_info:
+            await client.predict({"title": "Engineer"})
+        assert "inconsistent midpoint" in exc_info.value.message
+    finally:
+        await client.close()
+
