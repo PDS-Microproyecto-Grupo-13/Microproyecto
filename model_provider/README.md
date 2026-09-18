@@ -1,279 +1,110 @@
-# SalaryPredict — Infraestructura MLOps (MLflow + Docker Compose)
+# SalaryPredict — Infraestructura MLOps y Serving
 
-Infraestructura del módulo `model_provider/` para **SalaryPredict**, con MLflow Tracking, Model Registry, serving, promoción e integración por Docker Compose. El flujo real de los modelos salariales está documentado en [`../DEPLOYMENT.md`](../DEPLOYMENT.md); el modelo demo de este documento se conserva únicamente para pruebas rápidas de infraestructura.
+Módulo de infraestructura, gobernanza de modelos y servicio de inferencia para **SalaryPredict v1.0**. Provee el servidor central de MLflow, el contenedor de serving inmutable y las utilidades operacionales de promoción, detección de drift y operaciones que soportan el procedimiento operacional de rollback..
 
 ---
 
-## 1. Arquitectura MLOps
+## 1. Responsabilidad
+
+El módulo `model_provider/` se encarga exclusivamente de:
+- Proveer el servidor persistente de **MLflow Tracking Server** y **Model Registry**.
+- Gestionar la resolución y fijación del modelo **`salary-predictor`** con el alias **`champion`**.
+- Servir inferencias HTTP de forma inmutable mediante `mlflow models serve` (`:5001/invocations`).
+- Exponer el estado y metadatos del runtime de inferencia en tiempo real (`:5002/status`).
+- Ofrecer herramientas CLI para inspección de versiones, promoción, verificación de alineación que soportan el procedimiento operacional de rollback.
+
+> **Frontera de responsabilidad**: `model_provider/` **NO entrena modelos**, no prepara variables de ingeniería ni evalúa candidatos; esas tareas corresponden a `ml/`.
+
+---
+
+## 2. Organización del Módulo
 
 ```text
-                       ml/ (Entrenamiento & Registro)
-                                     │
-                                     │ MLflow Client
-                                     ▼
-               ┌──────────────────────────────────────────┐
-               │         mlflow-tracking (5000)           │
-               │   • Tracking Server & UI                 │
-               │   • Model Registry                       │
-               │   • SQLite: /var/lib/mlflow/db           │
-               │   • Artifacts: /var/lib/mlflow/artifacts │
-               └─────────────────────┬────────────────────┘
-                                     │
-                                     │ model: salary_predict_model
-                                     │ alias: champion (v1 -> v2)
-                                     ▼
-               ┌──────────────────────────────────────────┐
-               │            inference (5001)              │
-               │   • start.py (Model Resolver)            │
-               │   • MLflow Model Serving                 │
-               │   • Inmutable: Requiere reinicio         │
-               └─────────────────────┬────────────────────┘
-                                     │
-                                     │ HTTP (POST /invocations)
-                                     ▼
-               ┌──────────────────────────────────────────┐
-               │              backend (8000)              │
-               │   • FastAPI Microservice                 │
-               └─────────────────────┬────────────────────┘
-                                     │
-                                     │ HTTP
-                                     ▼
-               ┌──────────────────────────────────────────┐
-               │             frontend (5173)              │
-               │   • React + TypeScript Dashboard         │
-               └──────────────────────────────────────────┘
+model_provider/
+├── tracking/            # Dockerfile y configuración del servidor MLflow (puerto 5000)
+├── inference/           # Dockerfile, wrapper operacional start.py y healthchecks (puertos 5001 y 5002)
+├── scripts/             # Herramientas CLI (promote_model.py, check_alignment.py, model_info.py)
+├── config/              # Plantillas de variables de entorno complementarias
+└── tests/               # Suite de pruebas unitarias de infraestructura y serving
 ```
 
-### Separación de Responsabilidades
+---
 
-* **`model_provider/tracking/`**: Servidor de tracking y Model Registry persistente sobre SQLite y volumen de artefactos.
-* **`model_provider/inference/`**: Servidor oficial de inferencia (`mlflow models serve`) con wrapper operacional (`start.py`) que resuelve el alias `champion` a una versión concreta al arrancar.
-* **`model_provider/scripts/`**: Utilidades CLI para promoción de versiones a alias e inspección de metadatos.
-* **`model_provider/dev/`**: Utilidad bootstrap para registrar modelos demo con el fin de validar el ciclo end-to-end.
-* **`model_provider/config/`**: Plantillas de variables de entorno para tracking e inferencia.
+## 3. Mecanismo de Serving e Inmutabilidad
+
+El servicio de serving implementa una política estricta de estabilidad operativa:
+
+1. **Resolución en Arranque**: Al inicializarse el contenedor (`start.py`), consulta el Model Registry para resolver qué versión numérica corresponde a `salary-predictor@champion`.
+2. **Fijación de Versión**: Lanza el servidor subyacente apuntando directamente a la URI inmutable `models:/salary-predictor/<VERSION>`.
+3. **Inmutabilidad en Runtime**: La versión cargada en memoria permanece invariable durante toda la vida del proceso, asegurando que ninguna promoción externa altere peticiones en curso.
+4. **Status Server Integrado**: En paralelo, un servidor HTTP ligero en el puerto `5002` expone `GET /status` reportando la versión servida, PID, estado del proceso y hora de inicio.
+
+> [!IMPORTANT]
+> **Principio de gobierno**: `PROMOTE != DEPLOY`. Promover una versión en el Registry solo actualiza la asignación lógica del alias `champion`. Para aplicar el cambio al tráfico real, es indispensable reiniciar el servicio de inferencia (`docker compose restart inference`).
 
 ---
 
-## 2. Persistencia de Datos
+## 4. Scripts Operacionales Vigentes
 
-Para garantizar que los datos sobreviven al ciclo de vida de los contenedores, se utilizan volúmenes nombrados de Docker:
+Todas las herramientas operacionales operan contra el nombre canónico **`salary-predictor`**:
 
-| Recurso | Tipo de Almacenamiento | Ruta en Contenedor | Volumen Docker |
-| :--- | :--- | :--- | :--- |
-| **Metadatos & Runs** | SQLite (`mlflow.db`) | `/var/lib/mlflow/db` | `mlops-mlflow-db-data` |
-| **Artefactos del Modelo** | Filesystem Local | `/var/lib/mlflow/artifacts` | `mlops-mlflow-artifact-data` |
-
-> [!NOTE]
-> El contenedor de `inference` monta `mlops-mlflow-artifact-data` en modo solo lectura (`:ro`) para cargar artefactos directamente sin duplicar almacenamiento.
-
----
-
-## 3. Guía de Puesta en Marcha y Verificación End-to-End
-
-### Paso 1: Arrancar el Servidor de MLflow Tracking
-
+### Inspección del Modelo y Versiones (`model_info.py`)
 ```bash
-docker compose up -d mlflow-tracking
+python model_provider/scripts/model_info.py --model salary-predictor
 ```
+Permite auditar el estado del modelo, listar todas las versiones registradas y conocer qué versión tiene actualmente asignado el alias `champion`.
 
-* **MLflow UI:** `http://localhost:5000`
-* **Healthcheck:** El contenedor esperará hasta responder HTTP 200 en `http://localhost:5000/`.
-
----
-
-### Paso 2: Registrar el Modelo Demo (Versión 1)
-
-Ejecuta el script de demostración para entrenar un modelo sintético en memoria, registrar el run en MLflow y asignarle el alias `champion`:
-
-```bash
-python model_provider/dev/register_demo_model.py --version-tag v1
-```
-
-Salida esperada:
-```text
-✓ Model logged to run ID: <run_id>
-✓ Registered Model Version: 1
-✓ Alias 'champion' assigned to Version 1
-```
-
----
-
-### Paso 3: Iniciar el Servicio de Inferencia
-
-```bash
-docker compose up -d inference
-```
-
-Al iniciar, `start.py` resolverá el alias `champion` (versión 1) y lanzará el servidor de inferencia.
-
-Inspecciona los logs operacionales:
-```bash
-docker compose logs -f inference
-```
-
-Salida esperada:
-```text
-[INFO] service=inference event=tracking_connected tracking_uri=http://mlflow-tracking:5000
-[INFO] service=inference event=model_resolved model=salary_predict_model alias=champion version=1 run_id=...
-[INFO] service=inference event=model_server_starting model=salary_predict_model version=1
-```
-
----
-
-### Paso 4: Verificar Healthcheck de Inferencia
-
-```bash
-docker compose ps inference
-```
-El estado debe indicar `(healthy)`.
-
----
-
-### Paso 5: Realizar una Predicción de Prueba (`/invocations`)
-
-Envía un payload de ejemplo en formato `dataframe_split`:
-
-```bash
-curl -s -X POST http://localhost:5001/invocations \
-  -H "Content-Type: application/json" \
-  -d '{
-    "dataframe_split": {
-      "columns": ["years_experience", "is_remote", "skills_count"],
-      "data": [
-        [5.0, 1, 4],
-        [2.0, 0, 2]
-      ]
-    }
-  }'
-```
-
-Respuesta esperada:
-```json
-{"predictions": [78300.0, 46800.0]}
-```
-
----
-
-### Paso 6: Registrar una Nueva Versión (Versión 2)
-
-Genera una nueva versión del modelo (por ejemplo, con un algoritmo `GradientBoostingRegressor`):
-
-```bash
-python model_provider/dev/register_demo_model.py --version-tag v2 --no-set-champion
-```
-
-Salida:
-```text
-✓ Registered Model Version: 2
-```
-
----
-
-### Paso 7: Promover la Versión 2 a `champion`
-
-Utiliza el script administrativo `promote_model.py`:
-
+### Promoción a Producción (`promote_model.py`)
 ```bash
 python model_provider/scripts/promote_model.py \
-  --model salary_predict_model \
-  --version 2 \
+  --model salary-predictor \
+  --version <VERSION> \
   --alias champion
 ```
+Valida que la versión exista, tenga estado `READY` y cuente con el tag `eligible="true"` antes de asignarle el alias `champion`.
 
-Salida esperada en logs:
-```text
-[INFO] event=model_promotion_started model=salary_predict_model version=2 alias=champion
-[INFO] event=previous_alias model=salary_predict_model alias=champion version=1
-[INFO] event=model_promoted model=salary_predict_model alias=champion from_version=1 to_version=2
+### Comprobación de Alineación Operacional (`check_alignment.py`)
+```bash
+python model_provider/scripts/check_alignment.py
 ```
+Compara la versión del alias `champion` en el Registry contra la versión reportada por el status server (`:5002`):
+- **Código 0 (`SYNCHRONIZED`)**: El contenedor sirve exactamente la versión champion actual.
+- **Código 2 (`REDEPLOY REQUIRED`)**: Existe drift operacional; el Registry fue promovido pero el contenedor aún sirve la versión previa.
+- **Código 1 (`RUNTIME UNHEALTHY`)**: El servicio de inferencia no responde o está caído.
 
----
-
-### Paso 8: Comprobar que NO hay Hot Reload Inesperado
-
-Realiza una petición a `/invocations` sin reiniciar el contenedor: el servidor **continúa sirviendo la versión 1** de manera inmutable y segura.
-
----
-
-### Paso 9: Reiniciar Inferencia para Desplegar el Nuevo Champion
-
+### Redeploy Explícito
 ```bash
 docker compose restart inference
 ```
+Aplica de forma controlada la nueva versión promovida, descargando y recargando el artefacto en memoria (~5–15 s de ventana de inicialización).
 
-Inspecciona los logs para confirmar el nuevo despliegue:
+---
+
+## 5. Puertos y Servicios de Red
+
+| Puerto | Servicio | Protocolo / Ruta | Acceso |
+| :--- | :--- | :--- | :--- |
+| **`5000`** | MLflow Tracking & Registry | HTTP / UI | Restringido al equipo de ingeniería |
+| **`5001`** | MLflow Model Serving | HTTP POST `/invocations` | **Privado** (consumido solo por el Backend) |
+| **`5002`** | Inference Status Server | HTTP GET `/status`, `/health` | **Privado** (consumido por Backend y scripts) |
+
+---
+
+## 6. Pruebas Automatizadas
+
+Para validar los scripts operacionales, healthchecks y wrappers de inferencia:
+
 ```bash
-docker compose logs -f inference
-```
-
-Salida:
-```text
-[INFO] service=inference event=model_resolved model=salary_predict_model alias=champion version=2 run_id=...
-[INFO] service=inference event=model_server_starting model=salary_predict_model version=2
+pytest model_provider/tests
 ```
 
 ---
 
-## 4. Scripts Administrativos
+## 7. Fuera de Alcance del Módulo
 
-### Inspeccionar Metadatos del Modelo (`model_info.py`)
+- **Entrenamiento y optimización**: No ajusta hiperparámetros ni compila estimadores.
+- **Selección de features y evaluación**: No calcula métricas sobre particiones ni calibra incertidumbre.
+- **Lógica de negocio**: No valida peticiones de usuarios finales (responsabilidad del Backend).
+- **Interfaz de usuario**: No provee componentes web (responsabilidad del Frontend).
 
-```bash
-# Ver información general y todas las versiones registradas
-python model_provider/scripts/model_info.py --model salary_predict_model
-
-# Resolver qué versión tiene actualmente el alias 'champion'
-python model_provider/scripts/model_info.py --model salary_predict_model --alias champion
-
-# Inspeccionar una versión concreta
-python model_provider/scripts/model_info.py --model salary_predict_model --version 2
-```
-
-### Promover Modelo (`promote_model.py`)
-
-```bash
-python model_provider/scripts/promote_model.py \
-  --model salary_predict_model \
-  --version <VERSION_NUM> \
-  --alias champion \
-  --tracking-uri http://localhost:5000
-```
-
----
-
-## 5. Ejecución del Stack Completo
-
-Para iniciar todos los servicios (`mlflow-tracking`, `inference`, `backend`, `frontend`):
-
-```bash
-docker compose up -d
-```
-
-| Servicio | URL / Endpoint | Descripción |
-| :--- | :--- | :--- |
-| **Frontend** | `http://localhost:5173` | React Dashboard UI |
-| **Backend** | `http://localhost:8000/docs` | FastAPI REST API (Swagger Docs) |
-| **MLflow UI** | `http://localhost:5000` | Experimentos y Model Registry |
-| **Inference** | `http://localhost:5001/invocations` | MLflow Model Serving |
-
----
-
-## 6. Testing
-
-Ejecutar la suite de tests unitarios del módulo MLOps:
-
-```bash
-pytest model_provider/tests -v
-```
-
----
-
-## 7. Troubleshooting
-
-| Problema | Causa Probable | Solución |
-| :--- | :--- | :--- |
-| `Unable to connect to MLflow Tracking Server` | El contenedor `mlflow-tracking` no ha iniciado o no está saludable. | Verificar logs con `docker compose logs mlflow-tracking` y confirmar que responde en el puerto 5000. |
-| `Registered model '...' does not exist` | El modelo aún no ha sido registrado en MLflow Model Registry. | Registrar un modelo salarial como indica `DEPLOYMENT.md` o usar `python model_provider/dev/register_demo_model.py` para una prueba. |
-| `Alias 'champion' is not configured` | El modelo existe pero no tiene asignado el alias objetivo. | Promover una versión con `python model_provider/scripts/promote_model.py --model <NAME> --version 1 --alias champion`. |
-| `Inference container unhealthy` | El modelo tardó en cargar o falló la verificación de `/health`. | Revisar `docker compose logs inference` y el log de `healthcheck.py`. |
-| `Port conflict on 5000 / 5001` | Otro proceso local está ocupando el puerto. | Modificar `ports` en `docker-compose.yml` o detener el proceso en conflicto. |
+Para la puesta en marcha completa del stack junto con backend y frontend, consulte [`../DEPLOYMENT.md`](../DEPLOYMENT.md).

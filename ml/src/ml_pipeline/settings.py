@@ -31,8 +31,8 @@ class Settings:
             root=resolved_root,
             params=read_yaml(params_path),
             mlflow_tracking_uri=os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"),
-            mlflow_experiment_name=os.getenv("MLFLOW_EXPERIMENT_NAME", "toy-classification"),
-            mlflow_model_name=os.getenv("MLFLOW_MODEL_NAME", "toy-classifier"),
+            mlflow_experiment_name=os.getenv("MLFLOW_EXPERIMENT_NAME", "salary-prediction"),
+            mlflow_model_name=os.getenv("MLFLOW_MODEL_NAME", "salary-predictor"),
             require_clean_git=os.getenv("ML_REQUIRE_CLEAN_GIT", "false").lower()
             in {"1", "true", "yes"},
         )

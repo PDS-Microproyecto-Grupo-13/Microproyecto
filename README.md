@@ -1,211 +1,154 @@
-# PREDICCIÓN DE RANGO DE SALARIOS POSICIONES DATOS, IA Y MACHINE LEARNING — Microproyecto PDS 2026-14
+# SalaryPredict — Estimación de Rangos Salariales en Datos, IA y ML
 
-Proyecto académico para analizar vacantes de datos, inteligencia artificial y *machine learning* y, en fases posteriores, estimar rangos salariales anuales en USD según las características de una vacante.
+SalaryPredict es una plataforma MLOps orientada a estimar el rango salarial anual en USD ofrecido en publicaciones de empleo para posiciones de **Data, Inteligencia Artificial y Machine Learning**.
 
-> **Estado:** Entrega 1 — definición del problema, ingesta y versionamiento de datos, exploración inicial, maqueta del prototipo y esqueletos base de frontend y backend. El modelo predictivo, los endpoints de predicción y el tablero conectado a datos reales todavía no están implementados.
+A partir de las características del perfil laboral (título, experiencia, país, modalidad, empresa y habilidades técnicas), el sistema predice tres valores de referencia:
+- **Salario mínimo ofrecido** (`minimum_usd`)
+- **Salario máximo ofrecido** (`maximum_usd`)
+- **Punto medio** (`midpoint_usd`)
 
-## Problema y pregunta de negocio
+> [!NOTE]
+> Los datos modelados corresponden a remuneraciones ofertadas en publicaciones laborales, no a salarios efectivamente percibidos de forma individual.
 
-La adopción de inteligencia artificial está transformando la demanda de talento, las habilidades requeridas y las expectativas salariales. Profesionales, reclutadores y empleadores necesitan referencias comparables para interpretar una oferta dentro de un cargo y mercado determinados.
+---
 
-La pregunta que orienta el proyecto es:
+## Estado
 
-> ¿Qué rango salarial anual en USD puede esperar un profesional de datos, inteligencia artificial o *machine learning*, dadas las características de la vacante —cargo, experiencia, país, modalidad, tecnologías y tipo de publicador—, y cómo varía ese rango entre mercados?
+**SalaryPredict v1.0** — Entregable final con integración End-to-End (E2E) funcional entre interfaz web, backend REST, servicio de inferencia y registro central de modelos.
 
-El resultado esperado en las siguientes fases estará compuesto por dos objetivos:
+---
 
-- `Y1 = salary_min_usd`: límite salarial mínimo ofrecido.
-- `Y2 = salary_max_usd`: límite salarial máximo ofrecido.
+## Arquitectura
 
-Los datos representan remuneraciones ofrecidas en publicaciones de empleo, no salarios efectivamente recibidos. El proyecto tiene fines académicos y no sustituye una valoración laboral individual.
+### 1. Flujo de Servicio E2E (Runtime Serving)
 
-## Alcance de la Entrega 1
+```mermaid
+flowchart TD
+    UI["Frontend (React 19 + TypeScript)<br/>:5173"] -->|"HTTP POST /api/v1/predictions"| API["Backend (FastAPI)<br/>:8000"]
+    API -->|"HTTP POST /invocations"| INF["Inference Service (MLflow PyFunc)<br/>:5001"]
+    INF -->|"Al arrancar: resuelve alias champion"| REG["MLflow Registry & Tracking<br/>:5000"]
+    API -.->|"Sonda HTTP :5002/status"| INF
+```
 
-Esta entrega cubre:
-
-- Definición del problema, usuario y pregunta de negocio.
-- Ingesta de vacantes desde la API de Foorilla.
-- Validación y aplanamiento del esquema de la API.
-- Generación de archivos CSV fechados y manifiestos de extracción.
-- Versionamiento de los datos mediante DVC y un remoto S3.
-- Exploración, limpieza y análisis descriptivo de los datos.
-- Maqueta de seis vistas para el futuro tablero.
-- Esqueletos técnicos del frontend en React/Vite y del backend en FastAPI.
-- Pruebas unitarias del cliente y del esquema de ingesta.
-
-Aunque existen sus estructuras iniciales, aún no están implementados funcionalmente:
-
-- Entrenamiento y selección del modelo.
-- Seguimiento de experimentos y versionamiento de modelos.
-- Endpoints de predicción en el backend.
-- Integración del frontend con datos y predicciones reales.
-- Despliegue, integración continua y monitoreo.
-
-## Datos
-
-### Fuente
-
-Las vacantes proceden de [Foorilla Hiring](https://foorilla.com/hiring/) mediante `GET /api/v1/hiring/job/`. La extracción utiliza `topic=101`, correspondiente a **Data, AI, and Machine Learning**.
-
-### Cortes disponibles
-
-| Corte | Tipo | Registros |
-|---|---|---:|
-| 2026-08-16 | Base | 326.311 |
-| 2026-08-17 | Incremental desde 2026-08-15 | 180 |
-| **Total integrado** | Antes de consolidación | **326.491** |
-
-La cobertura temporal de las publicaciones va del 1 de enero de 2025 al 17 de agosto de 2026. Los dos cortes contienen 326.443 identificadores únicos antes de consolidar republicaciones.
-
-El esquema contiene 28 variables sobre identificación, empresa, cargo, ubicación, modalidad, experiencia, fechas, idioma, remuneración, temas, etiquetas, regiones, países y URL de postulación. Las tecnologías se identificarán a partir de `tags` mediante un vocabulario que debe ser depurado y validado.
-
-La documentación detallada de la API, el esquema y las opciones de extracción se encuentra en [INGESTA_DATOS.md](INGESTA_DATOS.md).
-
-### Resultados exploratorios de la entrega
-
-La consolidación descrita en el reporte de la Entrega 1 produce:
-
-- 277.668 vacantes después de consolidar identificadores y republicaciones.
-- 254.577 vacantes en la muestra salarial final.
-- 53.290 rangos completamente reportados por las vacantes.
-- 196.490 rangos estimados por Foorilla.
-- 4.797 rangos híbridos.
-
-Los salarios estimados, reportados e híbridos se analizarán por separado, pues no tienen la misma procedencia ni confiabilidad. Las diferencias entre países, experiencia o modalidad son asociaciones descriptivas y no deben interpretarse como efectos causales.
-
-> **Pendiente de la Entrega 1:** versionar en el repositorio el notebook o pipeline completo que reproduce la integración, depuración, cifras y figuras presentadas en el reporte. El notebook actual es únicamente un punto de partida para cargar e inspeccionar el último corte.
-
-## Flujo de datos de esta entrega
+### 2. Flujo MLOps y Ciclo de Vida del Modelo
 
 ```mermaid
 flowchart LR
-    A[Foorilla API] --> B[Cliente y paginación]
-    B --> C[Validación Pydantic]
-    C --> D[CSV y manifest]
-    D --> E[DVC]
-    E --> F[Remoto S3]
-    D --> G[Exploración y depuración]
-    G --> H[Reporte y mockup]
+    DATA["Foorilla Snapshots<br/>(CSV)"] --> DVC["DVC Pipeline<br/>(6 etapas)"]
+    DVC --> TR["track<br/>(MLflow Run)"]
+    TR --> RC["register candidate<br/>(Model Registry)"]
+    RC --> PR["promote champion<br/>(Alias)"]
+    PR --> DP["redeploy<br/>(Serving inmutable)"]
 ```
 
-## Estructura del repositorio
+---
 
-```text
-Microproyecto/
-├── .dvc/                    # Configuración de DVC y remoto S3
-├── backend/                 # Base FastAPI, endpoint de salud y pruebas
-├── data/raw/foorilla.dvc    # Puntero DVC a los archivos de datos
-├── frontend/                # Base React/Vite con las vistas del mockup
-├── ml/                      # Espacio reservado para el modelo
-├── mlflow/                  # Espacio reservado para tracking de experimentos
-├── notebooks/
-│   └── 01_eda_ingested_data.ipynb
-├── src/ingestion/
-│   ├── client.py            # Cliente, autenticación, paginación y reintentos
-│   ├── config.py            # Configuración mediante variables de entorno
-│   ├── fetch.py             # Extracción, validación y escritura de CSV/manifest
-│   └── schema.py            # Modelos Pydantic del esquema de la API
-├── tests/unit/              # Pruebas del cliente y del esquema
-├── ATTRIBUTION.md           # Condiciones de atribución de los datos
-├── INGESTA_DATOS.md         # Documentación detallada de la ingesta
-├── requirements.txt         # Dependencias directas
-└── requirements.lock.txt    # Entorno reproducible con versiones fijadas
-```
+## Componentes del Monorepo
 
-El frontend y el backend son bases de desarrollo incorporadas al repositorio; su presencia no implica que el modelo o el flujo de predicción estén terminados. Cada componente tiene instrucciones adicionales en [backend/README.md](backend/README.md) y [frontend/README.md](frontend/README.md). Las carpetas `ml/` y `mlflow/` son marcadores para fases posteriores.
+- **`frontend/`**: Tablero web interactivo en React 19 y Vite para capturar perfiles, visualizar estimaciones salariales y explorar diagnósticos.
+- **`backend/`**: Microservicio FastAPI que valida esquemas de entrada (Pydantic), traduce el contrato a MLflow, comprueba invariantes numéricas y expone la API REST.
+- **`ml/`**: Pipeline reproducible DVC para ingesta multi-snapshot, validación, preprocesamiento temporal, calificación, calibración de incertidumbre, entrenamiento dual LightGBM y evaluación sobre test ciego.
+- **`model_provider/`**: Infraestructura de tracking MLflow sobre SQLite, servidor de serving inmutable con reporte de estado en runtime (`start.py`) y utilidades operacionales CLI de promoción y verificación de drift.
 
-## Preparación del entorno
+---
 
-El desarrollo local de esta entrega se realizó con Python 3.12.
+## Stack Tecnológico
 
-```powershell
-git clone https://github.com/PDS-Microproyecto-Grupo-13/Microproyecto.git
+| Capa | Tecnologías |
+| :--- | :--- |
+| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS, Lucide Icons |
+| **Backend API** | FastAPI, Pydantic v2, HTTPX, Uvicorn |
+| **Modelado ML** | LightGBM, Scikit-Learn, Pandas, NumPy, Joblib |
+| **Gestión de Datos** | DVC (Data Version Control) sobre Google Drive / S3 |
+| **Tracking & Registry** | MLflow 3 (Tracking Server, Model Registry, PyFunc flavor) |
+| **Orquestación & Despliegue** | Docker, Docker Compose v2, Nginx |
+
+---
+
+## Pipeline MLOps
+
+El flujo reproducible de modelado en `ml/` se estructura en dos fases complementarias:
+
+1. **Gobernado por DVC (`dvc repro`)**:
+   `collect -> validate -> preprocess -> qualify -> train -> evaluate`
+2. **Operaciones operacionales externas**:
+   `track -> register-candidate -> promote -> redeploy`
+
+> **Principio de gobierno**: `train != track != register != promote != deploy`. El entrenamiento produce artefactos locales; el tracking registra el experimento; el registro crea una versión formal candidata; la promoción reasigna el alias de producción; y el despliegue actualiza el serving inmutable en memoria.
+
+---
+
+## Resultados del Modelo Vigente
+
+El modelo operacional aprobado (`salary-predictor@champion`, LightGBM con 24 variables canónicas) evaluado sobre el conjunto de prueba ciego (*test split* de 8,155 observaciones) presenta las siguientes métricas oficiales:
+
+| Métrica | Valor Obtenido |
+| :--- | :--- |
+| **MAE Promedio Conjunto** | **~USD 27,081** (USD 22,487 para mín. / USD 31,675 para máx.) |
+| **Coeficiente $R^2$ Salario Mínimo ($Y_1$)** | **0.573** |
+| **Coeficiente $R^2$ Salario Máximo ($Y_2$)** | **0.628** |
+| **Margen Operacional de Incertidumbre** | **$\pm$USD 50,927** |
+| **Cobertura Empírica en Prueba** | **78.9%** (frente al 80.0% nominal calibrado) |
+
+*Notas de auditoría y paridad*:
+- **Notebook de referencia vs. pipeline operacional**: Clasificación cuantitativa **`VERY_SIMILAR`** (con diferencias aproximadamente inferiores al 0.60% en MAE y deltas menores a 0.005 en $R^2$).
+- **Paridad de serving**: Discrepancia numérica exacta de **0.000000 USD** (`max delta = 0 USD`) evaluada entre el bundle local (`model.joblib`), el wrapper PyFunc y el microservicio HTTP de inferencia en Docker.
+
+---
+
+## Quick Start (Despliegue Rápido)
+
+Si ya existe un estado de MLflow o volúmenes locales que contengan el modelo registrado `salary-predictor` con el alias `champion`:
+
+```bash
+git clone git@github.com:PDS-Microproyecto-Grupo-13/Microproyecto.git
 cd Microproyecto
-
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-
-python -m pip install --upgrade pip
-pip install -r requirements.lock.txt
+docker compose up -d --build
 ```
 
-Para realizar una extracción nueva se necesita una clave de la API de Foorilla. Puede definirse en un archivo local `.env`, que está excluido de Git:
+> [!WARNING]
+> Este inicio rápido asume que el Model Registry ya contiene un modelo `salary-predictor` con alias `champion`. Si se inicia desde una **máquina completamente limpia sin estado previo de MLflow**, consulte obligatoriamente la [Modalidad B en DEPLOYMENT.md](DEPLOYMENT.md) para ejecutar el procedimiento de bootstrap en el orden requerido.
 
-```dotenv
-FOORILLA_API_KEY=REEMPLAZAR_CON_LA_CLAVE_PERSONAL
-FOORILLA_BASE_URL=https://foorilla.com/api/v1
-FOORILLA_RATE_LIMIT_RPS=5
+---
+
+## Endpoints Principales
+
+| Servicio | URL / Endpoint | Descripción |
+| :--- | :--- | :--- |
+| **Frontend Web** | `http://localhost:5173` | Tablero de usuario interactivo |
+| **Backend API & Swagger** | `http://localhost:8000/docs` | Documentación interactiva OpenAPI |
+| **MLflow UI** | `http://localhost:5000` | Experimentos, corridas y Model Registry |
+| **Runtime Serving Status** | `http://localhost:5002/status` | Estado y versión del modelo en ejecución |
+
+---
+
+## Pruebas Automatizadas
+
+Comandos vigentes para ejecutar la suite de pruebas de calidad:
+
+```bash
+# Backend (FastAPI, clientes e invariantes)
+pytest backend/tests
+
+# Model Provider (Serving, start.py, promoción y alineación)
+pytest model_provider/tests
+
+# ML Pipeline (Ingesta, preprocesamiento, contratos y evaluación)
+pytest ml/tests/unit ml/tests/contract
+
+# Frontend (Linter de código y verificación de tipos/build)
+cd frontend && npm run lint && npm run build
 ```
 
-No se deben guardar claves de Foorilla o AWS en el repositorio.
+---
 
-## Recuperación de datos con DVC
+## Documentación Detallada
 
-Los archivos grandes no se almacenan directamente en Git. El archivo `data/raw/foorilla.dvc` identifica la versión y DVC recupera el contenido desde el remoto configurado:
+- [DEPLOYMENT.md](DEPLOYMENT.md) — Manual reproducible de despliegue, bootstrap desde cero, verificación y rollback.
+- [INGESTA_DATOS.md](INGESTA_DATOS.md) — Especificación técnica de la ingesta de vacantes desde la API de Foorilla.
+- [ATTRIBUTION.md](ATTRIBUTION.md) — Condiciones de licenciamiento y atribución de los datos bajo licencia CC BY-SA 4.0.
 
-```text
-s3://amzn-s3-mlops-foorilla
-```
-
-Con credenciales AWS autorizadas:
-
-```powershell
-dvc remote list
-dvc pull
-```
-
-Después de `dvc pull`, los CSV y manifiestos deben quedar disponibles bajo `data/raw/foorilla/`.
-
-## Ejecución de la ingesta
-
-Prueba limitada a tres páginas:
-
-```powershell
-python -m src.ingestion.fetch --endpoint jobs --topic 101 --max-pages 3
-```
-
-Extracción incremental:
-
-```powershell
-python -m src.ingestion.fetch `
-  --endpoint jobs `
-  --topic 101 `
-  --published-after 2026-08-15
-```
-
-Una extracción completa sin filtros puede contener millones de registros. Debe utilizarse el filtro de tema y respetarse el límite documentado de cinco solicitudes por segundo.
-
-## Pruebas
-
-Las pruebas unitarias simulan las respuestas HTTP; no requieren una clave real ni realizan llamadas a Foorilla.
-
-```powershell
-pytest tests/unit -v
-```
-
-Actualmente se verifican, entre otros comportamientos:
-
-- Autenticación mediante el encabezado `Api-Key`.
-- Paginación y límite de páginas.
-- Aplicación de filtros de tema y fecha.
-- Manejo de respuestas vacías.
-- Validación y aplanamiento de empresa, temas y etiquetas.
-
-## Maqueta y entregables
-
-La maqueta propone seis vistas: inicio, configuración de la vacante, resultado salarial, exploración de datos, comparaciones y metodología. Sus cifras son ilustrativas y deben reemplazarse por resultados reproducibles durante la implementación.
-
-Los documentos y mockups de la entrega se gestionan en la [carpeta compartida del proyecto en Google Drive](https://drive.google.com/drive/folders/1OJGFU8tAQoJhi_E4XjqN_G786SNur4RN?usp=drive_link).
-
-## Limitaciones conocidas
-
-- La mayoría de los rangos disponibles fueron estimados por Foorilla.
-- `work_mode` tiene baja cobertura y sus códigos aún requieren validación formal.
-- `tags` contiene tecnologías, pero también cargos, responsabilidades, formación y beneficios.
-- Agosto de 2026 es un mes incompleto por la fecha de corte.
-- La cobertura es desigual entre países y perfiles.
-- Las ubicaciones pueden contener varios países o nombres ambiguos.
-- Los resultados representan ofertas salariales publicadas.
+---
 
 ## Equipo
 
@@ -214,10 +157,8 @@ Los documentos y mockups de la entrega se gestionan en la [carpeta compartida de
 - Ramiro Alfonso Bautista Parra
 - Zenon Jorge Alanoca Aguilar
 
-Las contribuciones individuales se evidencian mediante el historial de commits y el reporte de trabajo en equipo de la entrega.
+---
 
-## Fuente, licencia y atribución
+## Licencia y Atribución
 
-Los datos de vacantes y salarios proceden de [Foorilla](https://foorilla.com/api/) y están disponibles bajo licencia [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Los datos fueron limpiados y transformados para fines académicos; los resultados no implican respaldo de Foorilla.
-
-Las condiciones completas de atribución y uso se encuentran en [ATTRIBUTION.md](ATTRIBUTION.md).
+Los datos salariales y de vacantes proceden de [Foorilla](https://foorilla.com/api/) bajo licencia [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Los datos fueron depurados y utilizados para entrenar modelos predictivos académicos; las salidas no implican respaldo formal por parte de Foorilla.
