@@ -16,7 +16,7 @@ def test_fetch_registry_version_success():
     mock_mv.version = "1"
     mock_client.get_model_version_by_alias.return_value = mock_mv
 
-    version = fetch_registry_version(mock_client, "salary-predictor", "champion")
+    version = fetch_registry_version(mock_client, "salary_predict_model", "champion")
     assert version == "1"
 
 
@@ -25,7 +25,7 @@ def test_fetch_registry_version_failure():
     mock_client.get_model_version_by_alias.side_effect = MlflowException("Alias not found")
 
     with pytest.raises(RuntimeError) as exc_info:
-        fetch_registry_version(mock_client, "salary-predictor", "champion")
+        fetch_registry_version(mock_client, "salary_predict_model", "champion")
     assert "Failed to resolve alias 'champion'" in str(exc_info.value)
 
 
@@ -68,7 +68,7 @@ def test_check_alignment_synchronized(mock_fetch_status, mock_client_cls):
         "model_server_running": True,
     }
 
-    result = check_alignment("salary-predictor", "champion", "http://fake:5000", "http://fake:5002/status")
+    result = check_alignment("salary_predict_model", "champion", "http://fake:5000", "http://fake:5002/status")
     assert result["alignment_status"] == "synchronized"
     assert result["registry_version"] == "1"
     assert result["runtime_loaded_version"] == "1"
@@ -89,7 +89,7 @@ def test_check_alignment_redeploy_required(mock_fetch_status, mock_client_cls):
         "model_server_running": True,
     }
 
-    result = check_alignment("salary-predictor", "champion", "http://fake:5000", "http://fake:5002/status")
+    result = check_alignment("salary_predict_model", "champion", "http://fake:5000", "http://fake:5002/status")
     assert result["alignment_status"] == "redeploy_required"
     assert result["registry_version"] == "2"
     assert result["runtime_loaded_version"] == "1"
@@ -110,7 +110,7 @@ def test_check_alignment_runtime_unhealthy(mock_fetch_status, mock_client_cls):
         "model_server_running": False,
     }
 
-    result = check_alignment("salary-predictor", "champion", "http://fake:5000", "http://fake:5002/status")
+    result = check_alignment("salary_predict_model", "champion", "http://fake:5000", "http://fake:5002/status")
     assert result["alignment_status"] == "runtime_unhealthy"
 
 
@@ -130,7 +130,7 @@ def test_check_alignment_rollback_pending(mock_fetch_status, mock_client_cls):
         "model_server_running": True,
     }
 
-    result = check_alignment("salary-predictor", "champion", "http://fake:5000", "http://fake:5002/status")
+    result = check_alignment("salary_predict_model", "champion", "http://fake:5000", "http://fake:5002/status")
     assert result["alignment_status"] == "redeploy_required"
     assert result["registry_version"] == "1"
     assert result["runtime_loaded_version"] == "2"
@@ -152,7 +152,7 @@ def test_check_alignment_post_redeploy_synchronized(mock_fetch_status, mock_clie
         "model_server_running": True,
     }
 
-    result = check_alignment("salary-predictor", "champion", "http://fake:5000", "http://fake:5002/status")
+    result = check_alignment("salary_predict_model", "champion", "http://fake:5000", "http://fake:5002/status")
     assert result["alignment_status"] == "synchronized"
     assert result["registry_version"] == "2"
     assert result["runtime_loaded_version"] == "2"
@@ -170,30 +170,30 @@ def test_check_alignment_full_lifecycle_sequence(mock_fetch_status, mock_client_
     # 1. Initial state: v1 in Registry, v1 in Serving -> synchronized
     mock_mv.version = "1"
     mock_fetch_status.return_value = {"status": "ok", "loaded_version": "1", "model_server_running": True}
-    res1 = check_alignment("salary-predictor", "champion", "http://fake:5000", "http://fake:5002/status")
+    res1 = check_alignment("salary_predict_model", "champion", "http://fake:5000", "http://fake:5002/status")
     assert res1["alignment_status"] == "synchronized"
 
     # 2. Champion promoted to v2 in Registry, container not restarted -> redeploy_required
     mock_mv.version = "2"
     mock_fetch_status.return_value = {"status": "ok", "loaded_version": "1", "model_server_running": True}
-    res2 = check_alignment("salary-predictor", "champion", "http://fake:5000", "http://fake:5002/status")
+    res2 = check_alignment("salary_predict_model", "champion", "http://fake:5000", "http://fake:5002/status")
     assert res2["alignment_status"] == "redeploy_required"
 
     # 3. Serving container restarted -> now loaded_version is v2 -> synchronized
     mock_mv.version = "2"
     mock_fetch_status.return_value = {"status": "ok", "loaded_version": "2", "model_server_running": True}
-    res3 = check_alignment("salary-predictor", "champion", "http://fake:5000", "http://fake:5002/status")
+    res3 = check_alignment("salary_predict_model", "champion", "http://fake:5000", "http://fake:5002/status")
     assert res3["alignment_status"] == "synchronized"
 
     # 4. Rollback: Champion moved back to v1 in Registry, container still running v2 -> redeploy_required
     mock_mv.version = "1"
     mock_fetch_status.return_value = {"status": "ok", "loaded_version": "2", "model_server_running": True}
-    res4 = check_alignment("salary-predictor", "champion", "http://fake:5000", "http://fake:5002/status")
+    res4 = check_alignment("salary_predict_model", "champion", "http://fake:5000", "http://fake:5002/status")
     assert res4["alignment_status"] == "redeploy_required"
 
     # 5. Serving container restarted to complete rollback -> loaded_version is v1 -> synchronized
     mock_mv.version = "1"
     mock_fetch_status.return_value = {"status": "ok", "loaded_version": "1", "model_server_running": True}
-    res5 = check_alignment("salary-predictor", "champion", "http://fake:5000", "http://fake:5002/status")
+    res5 = check_alignment("salary_predict_model", "champion", "http://fake:5000", "http://fake:5002/status")
     assert res5["alignment_status"] == "synchronized"
 

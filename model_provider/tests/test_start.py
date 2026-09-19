@@ -165,36 +165,36 @@ def test_build_serve_command():
 
 
 def test_load_config_from_env_salary_predictor(monkeypatch):
-    """Test loading configuration specifically for canonical salary-predictor."""
-    monkeypatch.setenv("MODEL_NAME", "salary-predictor")
+    """Test loading configuration specifically for canonical salary_predict_model."""
+    monkeypatch.setenv("MODEL_NAME", "salary_predict_model")
     monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://mlflow-tracking:5000")
     monkeypatch.setenv("MODEL_ALIAS", "champion")
     monkeypatch.setenv("INFERENCE_PORT", "5001")
 
     config = load_config_from_env()
-    assert config.model_name == "salary-predictor"
+    assert config.model_name == "salary_predict_model"
     assert config.model_alias == "champion"
     assert config.port == 5001
     assert config.tracking_uri == "http://mlflow-tracking:5000"
 
 
 def test_resolve_model_info_salary_predictor_champion(mock_mlflow_client, mock_model_version):
-    """Test resolving salary-predictor@champion returns concrete version 1."""
-    mock_mlflow_client.get_registered_model.return_value = {"name": "salary-predictor"}
+    """Test resolving salary_predict_model@champion returns concrete version 1."""
+    mock_mlflow_client.get_registered_model.return_value = {"name": "salary_predict_model"}
     mock_model_version.version = "1"
     mock_model_version.run_id = "run-db1fd1"
     mock_mlflow_client.get_model_version_by_alias.return_value = mock_model_version
 
     config = ServingConfig(
         tracking_uri="http://localhost:5000",
-        model_name="salary-predictor",
+        model_name="salary_predict_model",
         model_alias="champion",
         host="0.0.0.0",
         port=5001,
     )
 
     info = resolve_model_info(mock_mlflow_client, config)
-    assert info.model_name == "salary-predictor"
+    assert info.model_name == "salary_predict_model"
     assert info.model_alias == "champion"
     assert info.version == "1"
     assert info.run_id == "run-db1fd1"
@@ -206,14 +206,14 @@ def test_build_serve_command_exact_version_pinning_no_hot_reload():
 
     config = ServingConfig(
         tracking_uri="http://localhost:5000",
-        model_name="salary-predictor",
+        model_name="salary_predict_model",
         model_alias="champion",
         host="0.0.0.0",
         port=5001,
     )
 
     model_info = ResolvedModelInfo(
-        model_name="salary-predictor",
+        model_name="salary_predict_model",
         model_alias="champion",
         version="1",
         run_id="run-db1fd1",
@@ -226,13 +226,13 @@ def test_build_serve_command_exact_version_pinning_no_hot_reload():
     # Must be pinned to concrete version /1, never to alias @champion
     assert "--model-uri" in cmd
     uri_idx = cmd.index("--model-uri") + 1
-    assert cmd[uri_idx] == "models:/salary-predictor/1"
+    assert cmd[uri_idx] == "models:/salary_predict_model/1"
     assert "@" not in cmd[uri_idx]
 
 
 def test_load_config_from_env_custom_status_port(monkeypatch):
     """Test parsing custom INFERENCE_STATUS_PORT."""
-    monkeypatch.setenv("MODEL_NAME", "salary-predictor")
+    monkeypatch.setenv("MODEL_NAME", "salary_predict_model")
     monkeypatch.setenv("INFERENCE_STATUS_PORT", "5005")
     config = load_config_from_env()
     assert config.status_port == 5005
@@ -240,7 +240,7 @@ def test_load_config_from_env_custom_status_port(monkeypatch):
 
 def test_load_config_from_env_invalid_status_port(monkeypatch):
     """Test invalid status port falls back to default 5002."""
-    monkeypatch.setenv("MODEL_NAME", "salary-predictor")
+    monkeypatch.setenv("MODEL_NAME", "salary_predict_model")
     monkeypatch.setenv("INFERENCE_STATUS_PORT", "not_a_number")
     config = load_config_from_env()
     assert config.status_port == 5002
@@ -259,7 +259,7 @@ def test_status_server_endpoints():
     def dummy_status():
         return {
             "status": "ok" if state["running"] else "error",
-            "model_name": "salary-predictor",
+            "model_name": "salary_predict_model",
             "requested_alias": "champion",
             "resolved_version": "1",
             "loaded_version": "1",

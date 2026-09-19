@@ -2,7 +2,7 @@
 
 Manual de referencia operacional y reproducible para desplegar, operar y reconstruir la plataforma **SalaryPredict v1.0**.
 
-La arquitectura preserva la inmutabilidad de producción: los experimentos generan versiones versionadas en MLflow Model Registry bajo el nombre canónico **`salary-predictor`**, y el alias operacional **`champion`** gobierna qué versión atiende las peticiones de inferencia.
+La arquitectura preserva la inmutabilidad de producción: los experimentos generan versiones versionadas en MLflow Model Registry bajo el nombre canónico **`salary_predict_model`**, y el alias operacional **`champion`** gobierna qué versión atiende las peticiones de inferencia.
 
 ---
 
@@ -35,7 +35,7 @@ cp .env.example .env
 Por defecto, los valores predefinidos en `docker-compose.yml` operan de forma autónoma en entornos locales. Si despliega en un servidor remoto o instancia EC2, actualice `CORS_ORIGINS` con la IP pública o dominio del servidor:
 
 ```dotenv
-MODEL_NAME=salary-predictor
+MODEL_NAME=salary_predict_model
 MODEL_ALIAS=champion
 CORS_ORIGINS=http://localhost:5173,http://localhost:80,http://localhost,http://<IP_O_DOMINIO>:5173
 ```
@@ -44,7 +44,7 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:80,http://localhost,http://<
 
 ## 3. Modalidad A — Despliegue con Registry / Champion Existente
 
-Utilice esta modalidad cuando el servidor MLflow ya contenga el modelo `salary-predictor` con el alias `champion` asignado (por ejemplo, al reutilizar los volúmenes locales persistentes de Docker `mlops-mlflow-db-data` y `mlops-mlflow-artifact-data`, o al conectar con un MLflow corporativo).
+Utilice esta modalidad cuando el servidor MLflow ya contenga el modelo `salary_predict_model` con el alias `champion` asignado (por ejemplo, al reutilizar los volúmenes locales persistentes de Docker `mlops-mlflow-db-data` y `mlops-mlflow-artifact-data`, o al conectar con un MLflow corporativo).
 
 ### Paso 1: Clonar y validar configuración
 
@@ -80,7 +80,7 @@ curl -s http://localhost:8000/api/v1/health
 # Respuesta: {"status":"ok","service":"mlops-backend","version":"0.1.0"}
 
 curl -s http://localhost:5002/status
-# Respuesta: {"status":"ok","model_name":"salary-predictor","loaded_version":"<VERSION>",...}
+# Respuesta: {"status":"ok","model_name":"salary_predict_model","loaded_version":"<VERSION>",...}
 ```
 
 Abra `http://localhost:5173` en su navegador para interactuar con la aplicación.
@@ -128,7 +128,7 @@ Verifique que `ml/.env` contenga:
 ```dotenv
 MLFLOW_TRACKING_URI=http://localhost:5000
 MLFLOW_EXPERIMENT_NAME=salary-prediction
-MLFLOW_MODEL_NAME=salary-predictor
+MLFLOW_MODEL_NAME=salary_predict_model
 ML_REQUIRE_CLEAN_GIT=false
 ```
 
@@ -184,7 +184,7 @@ Desde la raíz del repositorio:
 
 ```bash
 cd ..
-python model_provider/scripts/model_info.py --model salary-predictor
+python model_provider/scripts/model_info.py --model salary_predict_model
 ```
 
 Identifique el número de versión registrado (por ejemplo: `Version 1`, `Version 2`, etc.).
@@ -195,14 +195,14 @@ Asigne el alias operacional utilizando el script de promoción:
 
 ```bash
 python model_provider/scripts/promote_model.py \
-  --model salary-predictor \
+  --model salary_predict_model \
   --version <VERSION> \
   --alias champion
 ```
 
 ### Paso 9: Levantar el resto de la aplicación
 
-Una vez que `salary-predictor@champion` existe formalmente en el Registry:
+Una vez que `salary_predict_model@champion` existe formalmente en el Registry:
 
 ```bash
 docker compose up -d --build inference backend frontend
@@ -219,7 +219,7 @@ Salida esperada (código de retorno 0):
 =================================================================
  MLflow Serving Operational Alignment Check
 =================================================================
- Model Name:             salary-predictor
+ Model Name:             salary_predict_model
  Target Alias:           champion
  Registry Version:       <VERSION>
  Runtime Loaded Version: <VERSION>
@@ -260,7 +260,7 @@ curl -s -X POST http://localhost:8000/api/v1/predictions \
     "midpoint_usd": <MIDPOINT_USD>
   },
   "model": {
-    "name": "salary-predictor",
+    "name": "salary_predict_model",
     "alias": "champion",
     "version": "<VERSION>"
   },
@@ -294,7 +294,7 @@ El servidor de serving carga el modelo en memoria **una sola vez al arrancar** (
 ### 1. Promover una nueva versión validada
 ```bash
 python model_provider/scripts/promote_model.py \
-  --model salary-predictor \
+  --model salary_predict_model \
   --version <NUEVA_VERSION> \
   --alias champion
 ```
@@ -324,7 +324,7 @@ Si la nueva versión presenta anomalías operacionales, revierta el servicio a l
 ```bash
 # 1. Reasignar alias champion a la versión previa estable
 python model_provider/scripts/promote_model.py \
-  --model salary-predictor \
+  --model salary_predict_model \
   --version <VERSION_ANTERIOR> \
   --alias champion
 
@@ -369,7 +369,7 @@ Los volúmenes nombrados `mlops-mlflow-db-data` y `mlops-mlflow-artifact-data` s
 
 | Síntoma | Causa Raíz | Solución |
 | :--- | :--- | :--- |
-| `Inference container exits with alias_lookup_failed` | El contenedor `inference` intentó iniciar pero no existe el modelo `salary-predictor` o el alias `champion` en MLflow. | Ejecute el procedimiento de la **Modalidad B** (bootstrap): levante solo `mlflow-tracking`, registre el modelo, asígnele el alias `champion` con `promote_model.py` y luego inicie `inference`. |
+| `Inference container exits with alias_lookup_failed` | El contenedor `inference` intentó iniciar pero no existe el modelo `salary_predict_model` o el alias `champion` en MLflow. | Ejecute el procedimiento de la **Modalidad B** (bootstrap): levante solo `mlflow-tracking`, registre el modelo, asígnele el alias `champion` con `promote_model.py` y luego inicie `inference`. |
 | `Inference container reports unhealthy` | El worker uvicorn tardó más del tiempo límite en inicializar LightGBM. | Verifique logs con `docker compose logs inference`. En equipos con recursos limitados, incremente el `start_period` en `docker-compose.yml`. |
 | `Backend returns HTTP 502 / ExternalServiceError` | El backend no logra comunicarse con `http://inference:5001`. | Confirme que el contenedor `inference` esté saludable con `docker compose ps` y responda en su red. |
 | `Error: Port already allocated (5000, 8000, 5173)` | Otro proceso local o contenedor previo ocupa el puerto del host. | Identifique el proceso (`lsof -i :<PUERTO>` o `netstat -tuln`) y deténgalo, o ajuste el mapeo de puertos en `docker-compose.yml`. |

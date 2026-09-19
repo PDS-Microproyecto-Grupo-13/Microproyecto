@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     INFERENCE_BASE_URL: str = "http://inference:5001"
     INFERENCE_STATUS_URL: str = "http://inference:5002/status"
     INFERENCE_TIMEOUT_SECONDS: float = 10.0
-    MODEL_NAME: str = "salary-predictor"
+    MODEL_NAME: str = "salary_predict_model"
     MODEL_ALIAS: str = "champion"
 
     # CORS Settings

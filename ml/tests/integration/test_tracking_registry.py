@@ -37,7 +37,7 @@ def test_track_and_register_candidate_contract(
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     tracking_uri = f"sqlite:///{db_path}"
     experiment_name = "test-salary-integration"
-    model_name = "salary-predictor-integration"
+    model_name = "salary_predict_model-integration"
 
     monkeypatch.setenv("MLFLOW_TRACKING_URI", tracking_uri)
     monkeypatch.setenv("MLFLOW_EXPERIMENT_NAME", experiment_name)
