@@ -40,7 +40,7 @@ class SalaryPredictionRequest(BaseModel):
             "has_remote": self.is_remote,
             "work_mode": self.work_mode,
             "tags": "|".join(self.technologies),
-            "published": datetime.now(UTC).isoformat(),
+            "published": datetime.now(UTC).replace(tzinfo=None).isoformat(),
         }
 
 

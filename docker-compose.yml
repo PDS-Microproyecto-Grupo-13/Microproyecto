@@ -43,8 +43,8 @@ services:
       - "5002:5002"
     environment:
       - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://mlflow-tracking:5000}
-      - MODEL_NAME=salary-predictor
-      - MODEL_ALIAS=champion
+      - MODEL_NAME=${MODEL_NAME:-salary-predictor}
+      - MODEL_ALIAS=${MODEL_ALIAS:-champion}
       - INFERENCE_HOST=0.0.0.0
       - INFERENCE_PORT=5001
       - INFERENCE_STATUS_PORT=5002
@@ -83,8 +83,8 @@ services:
       - INFERENCE_BASE_URL=http://inference:5001
       - INFERENCE_STATUS_URL=http://inference:5002/status
       - INFERENCE_TIMEOUT_SECONDS=10.0
-      - MODEL_NAME=salary-predictor
-      - MODEL_ALIAS=champion
+      - MODEL_NAME=${MODEL_NAME:-salary-predictor}
+      - MODEL_ALIAS=${MODEL_ALIAS:-champion}
       - CORS_ORIGINS=http://localhost:5173,http://localhost:80,http://localhost
     depends_on:
       inference:
