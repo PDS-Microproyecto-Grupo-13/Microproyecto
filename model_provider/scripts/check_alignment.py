@@ -18,8 +18,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model",
         "-m",
-        default=os.getenv("MODEL_NAME", "salary-predictor"),
-        help="Name of the registered model (default: salary-predictor).",
+        default=os.getenv("MODEL_NAME", "salary_predict_model"),
+        help="Name of the registered model (default: salary_predict_model).",
     )
     parser.add_argument(
         "--alias",

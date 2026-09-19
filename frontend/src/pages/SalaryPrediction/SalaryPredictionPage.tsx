@@ -61,7 +61,7 @@ export function SalaryPredictionPage() {
           <Card title="Modelo desplegado" subtitle="Selector estable para facilitar nuevas versiones" action={<Info size={18} color="var(--color-text-secondary)" />}>
             <dl className={styles.metadata}>
               <div><dt>Familia</dt><dd>Gradient boosting, dos salidas</dd></div>
-              <div><dt>Modelo</dt><dd>{result?.model.name ?? "salary-predictor"}</dd></div>
+              <div><dt>Modelo</dt><dd>{result?.model.name ?? "salary_predict_model"}</dd></div>
               <div><dt>Alias</dt><dd>{result?.model.alias ?? "champion"}</dd></div>
               {result?.model.version && <div><dt>Versión</dt><dd>{result.model.version}</dd></div>}
               <div><dt>Respuesta</dt><dd>Mínimo, máximo y punto medio</dd></div>

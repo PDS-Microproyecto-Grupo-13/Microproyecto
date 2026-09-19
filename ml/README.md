@@ -43,7 +43,7 @@ cp .env.example .env
 | :--- | :--- | :--- |
 | `MLFLOW_TRACKING_URI` | `http://localhost:5000` | Servidor central de MLflow |
 | `MLFLOW_EXPERIMENT_NAME` | `salary-prediction` | Experimento de seguimiento de corridas |
-| `MLFLOW_MODEL_NAME` | `salary-predictor` | Nombre canónico del modelo en el Registry |
+| `MLFLOW_MODEL_NAME` | `salary_predict_model` | Nombre canónico del modelo en el Registry |
 | `ML_REQUIRE_CLEAN_GIT` | `false` | Exigir árbol Git limpio antes de registrar |
 
 ---
@@ -102,7 +102,7 @@ python -m ml_pipeline track
 python -m ml_pipeline register-candidate
 ```
 - Valida las precondiciones de elegibilidad (`eligible: true` en `candidate.json` y `tracking.json`).
-- Registra la versión en el MLflow Model Registry bajo el modelo `salary-predictor`.
+- Registra la versión en el MLflow Model Registry bajo el modelo `salary_predict_model`.
 - Asigna los metadatos `candidate="true"` y `eligible="true"`.
 - Valida la paridad numérica estricta entre el modelo de tracking y la versión registrada.
 - Genera el reporte local `artifacts/reports/registration.json`.
