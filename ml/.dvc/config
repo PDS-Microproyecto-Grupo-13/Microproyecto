@@ -1,6 +1,8 @@
 [core]
-    remote = gdrive-remote
+    remote = dvc-public
 ['remote "aws-remote"']
     url = s3://amzn-s3-mlops-foorilla
 ['remote "gdrive-remote"']
     url = gdrive://1CNmcTbMiSGg3tfZ0HXeoK9a6lJsvO8vz
+['remote "dvc-public"']
+    url = http://44.192.26.195:8080/dvc/
