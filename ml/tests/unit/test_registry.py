@@ -59,7 +59,7 @@ def mock_mlflow_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     tracking_uri = f"sqlite:///{db_path}"
     experiment_name = "test-salary-registry"
-    model_name = "salary-predictor-test"
+    model_name = "salary_predict_model-test"
 
     monkeypatch.setenv("MLFLOW_TRACKING_URI", tracking_uri)
     monkeypatch.setenv("MLFLOW_EXPERIMENT_NAME", experiment_name)

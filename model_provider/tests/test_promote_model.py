@@ -21,7 +21,7 @@ def test_promote_model_version_success_with_previous_alias(mock_mlflow_client):
 
     prev_v, new_v = promote_model_version(
         client=mock_mlflow_client,
-        model_name="salary-predictor",
+        model_name="salary_predict_model",
         version="2",
         alias="champion",
     )
@@ -30,7 +30,7 @@ def test_promote_model_version_success_with_previous_alias(mock_mlflow_client):
     assert new_v == "2"
 
     mock_mlflow_client.set_registered_model_alias.assert_called_once_with(
-        name="salary-predictor",
+        name="salary_predict_model",
         alias="champion",
         version="2",
     )
@@ -48,7 +48,7 @@ def test_promote_model_version_initial_promotion_no_prev_alias(mock_mlflow_clien
 
     prev_v, new_v = promote_model_version(
         client=mock_mlflow_client,
-        model_name="salary-predictor",
+        model_name="salary_predict_model",
         version="1",
         alias="champion",
     )
@@ -57,7 +57,7 @@ def test_promote_model_version_initial_promotion_no_prev_alias(mock_mlflow_clien
     assert new_v == "1"
 
     mock_mlflow_client.set_registered_model_alias.assert_called_once_with(
-        name="salary-predictor",
+        name="salary_predict_model",
         alias="champion",
         version="1",
     )
@@ -78,7 +78,7 @@ def test_promote_model_version_idempotent_already_assigned(mock_mlflow_client):
 
     prev_v, new_v = promote_model_version(
         client=mock_mlflow_client,
-        model_name="salary-predictor",
+        model_name="salary_predict_model",
         version="1",
         alias="champion",
     )
@@ -113,12 +113,12 @@ def test_promote_model_version_target_version_not_found(mock_mlflow_client):
     with pytest.raises(ValueError) as exc_info:
         promote_model_version(
             client=mock_mlflow_client,
-            model_name="salary-predictor",
+            model_name="salary_predict_model",
             version="99",
             alias="champion",
         )
 
-    assert "Model version '99' for registered model 'salary-predictor' does not exist" in str(
+    assert "Model version '99' for registered model 'salary_predict_model' does not exist" in str(
         exc_info.value
     )
     mock_mlflow_client.set_registered_model_alias.assert_not_called()
@@ -136,7 +136,7 @@ def test_promote_model_version_rejects_status_not_ready(mock_mlflow_client):
     with pytest.raises(ValueError) as exc_info:
         promote_model_version(
             client=mock_mlflow_client,
-            model_name="salary-predictor",
+            model_name="salary_predict_model",
             version="1",
             alias="champion",
         )
@@ -157,7 +157,7 @@ def test_promote_model_version_rejects_missing_eligible_tag(mock_mlflow_client):
     with pytest.raises(ValueError) as exc_info:
         promote_model_version(
             client=mock_mlflow_client,
-            model_name="salary-predictor",
+            model_name="salary_predict_model",
             version="1",
             alias="champion",
         )
@@ -178,7 +178,7 @@ def test_promote_model_version_rejects_eligible_false(mock_mlflow_client):
     with pytest.raises(ValueError) as exc_info:
         promote_model_version(
             client=mock_mlflow_client,
-            model_name="salary-predictor",
+            model_name="salary_predict_model",
             version="1",
             alias="champion",
         )
@@ -202,7 +202,7 @@ def test_promote_model_version_set_alias_failure(mock_mlflow_client):
     with pytest.raises(RuntimeError) as exc_info:
         promote_model_version(
             client=mock_mlflow_client,
-            model_name="salary-predictor",
+            model_name="salary_predict_model",
             version="2",
             alias="champion",
         )

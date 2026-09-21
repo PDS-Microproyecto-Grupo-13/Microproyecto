@@ -80,7 +80,7 @@ El flujo reproducible de modelado en `ml/` se estructura en dos fases complement
 
 ## Resultados del Modelo Vigente
 
-El modelo operacional aprobado (`salary-predictor@champion`, LightGBM con 24 variables canónicas) evaluado sobre el conjunto de prueba ciego (*test split* de 8,155 observaciones) presenta las siguientes métricas oficiales:
+El modelo operacional aprobado (`salary_predict_model@champion`, LightGBM con 24 variables canónicas) evaluado sobre el conjunto de prueba ciego (*test split* de 8,155 observaciones) presenta las siguientes métricas oficiales:
 
 | Métrica | Valor Obtenido |
 | :--- | :--- |
@@ -98,7 +98,7 @@ El modelo operacional aprobado (`salary-predictor@champion`, LightGBM con 24 var
 
 ## Quick Start (Despliegue Rápido)
 
-Si ya existe un estado de MLflow o volúmenes locales que contengan el modelo registrado `salary-predictor` con el alias `champion`:
+Si ya existe un estado de MLflow o volúmenes locales que contengan el modelo registrado `salary_predict_model` con el alias `champion`:
 
 ```bash
 git clone git@github.com:PDS-Microproyecto-Grupo-13/Microproyecto.git
@@ -107,7 +107,7 @@ docker compose up -d --build
 ```
 
 > [!WARNING]
-> Este inicio rápido asume que el Model Registry ya contiene un modelo `salary-predictor` con alias `champion`. Si se inicia desde una **máquina completamente limpia sin estado previo de MLflow**, consulte obligatoriamente la [Modalidad B en DEPLOYMENT.md](DEPLOYMENT.md) para ejecutar el procedimiento de bootstrap en el orden requerido.
+> Este inicio rápido asume que el Model Registry ya contiene un modelo `salary_predict_model` con alias `champion`. Si se inicia desde una **máquina completamente limpia sin estado previo de MLflow**, consulte obligatoriamente la [Modalidad B en DEPLOYMENT.md](DEPLOYMENT.md) para ejecutar el procedimiento de bootstrap en el orden requerido.
 
 ---
 

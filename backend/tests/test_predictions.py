@@ -93,7 +93,8 @@ def test_to_mlflow_record_minimal_request_produces_11_columns():
     assert record["tags"] == ""
     assert record["experience_years"] is None
     dt = datetime.fromisoformat(str(record["published"]))
-    assert dt.tzinfo is not None
+    # MLflow requiere UTC representado sin información de zona horaria.
+    assert dt.tzinfo is None
 
 
 def test_to_mlflow_record_region_preserved():
@@ -154,7 +155,7 @@ def test_model_name_settings():
     from app.core.config import Settings
 
     settings = Settings()
-    assert settings.MODEL_NAME == "salary-predictor"
+    assert settings.MODEL_NAME == "salary_predict_model"
     assert settings.MODEL_ALIAS == "champion"
     assert settings.INFERENCE_STATUS_URL == "http://inference:5002/status"
 
@@ -173,7 +174,7 @@ async def test_prediction_endpoint_includes_runtime_version(client) -> None:
             return {
                 "status": "ok",
                 "loaded_version": "1",
-                "model_name": "salary-predictor",
+                "model_name": "salary_predict_model",
             }
 
     app = client._transport.app
@@ -189,7 +190,7 @@ async def test_prediction_endpoint_includes_runtime_version(client) -> None:
         )
         assert response.status_code == 200
         body = response.json()
-        assert body["model"]["name"] == "salary-predictor"
+        assert body["model"]["name"] == "salary_predict_model"
         assert body["model"]["alias"] == "champion"
         assert body["model"]["version"] == "1"
 
@@ -197,14 +198,14 @@ async def test_prediction_endpoint_includes_runtime_version(client) -> None:
         model_resp = await client.get("/api/v1/predictions/model")
         assert model_resp.status_code == 200
         model_body = model_resp.json()
-        assert model_body["name"] == "salary-predictor"
+        assert model_body["name"] == "salary_predict_model"
         assert model_body["version"] == "1"
 
         # Also test GET /api/v1/predictions/status
         status_resp = await client.get("/api/v1/predictions/status")
         assert status_resp.status_code == 200
         status_body = status_resp.json()
-        assert status_body["configured_model"] == "salary-predictor"
+        assert status_body["configured_model"] == "salary_predict_model"
         assert status_body["runtime_inference"]["loaded_version"] == "1"
     finally:
         app.dependency_overrides.pop(get_inference_client, None)

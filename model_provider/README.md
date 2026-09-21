@@ -8,7 +8,7 @@ Módulo de infraestructura, gobernanza de modelos y servicio de inferencia para 
 
 El módulo `model_provider/` se encarga exclusivamente de:
 - Proveer el servidor persistente de **MLflow Tracking Server** y **Model Registry**.
-- Gestionar la resolución y fijación del modelo **`salary-predictor`** con el alias **`champion`**.
+- Gestionar la resolución y fijación del modelo **`salary_predict_model`** con el alias **`champion`**.
 - Servir inferencias HTTP de forma inmutable mediante `mlflow models serve` (`:5001/invocations`).
 - Exponer el estado y metadatos del runtime de inferencia en tiempo real (`:5002/status`).
 - Ofrecer herramientas CLI para inspección de versiones, promoción, verificación de alineación que soportan el procedimiento operacional de rollback.
@@ -34,8 +34,8 @@ model_provider/
 
 El servicio de serving implementa una política estricta de estabilidad operativa:
 
-1. **Resolución en Arranque**: Al inicializarse el contenedor (`start.py`), consulta el Model Registry para resolver qué versión numérica corresponde a `salary-predictor@champion`.
-2. **Fijación de Versión**: Lanza el servidor subyacente apuntando directamente a la URI inmutable `models:/salary-predictor/<VERSION>`.
+1. **Resolución en Arranque**: Al inicializarse el contenedor (`start.py`), consulta el Model Registry para resolver qué versión numérica corresponde a `salary_predict_model@champion`.
+2. **Fijación de Versión**: Lanza el servidor subyacente apuntando directamente a la URI inmutable `models:/salary_predict_model/<VERSION>`.
 3. **Inmutabilidad en Runtime**: La versión cargada en memoria permanece invariable durante toda la vida del proceso, asegurando que ninguna promoción externa altere peticiones en curso.
 4. **Status Server Integrado**: En paralelo, un servidor HTTP ligero en el puerto `5002` expone `GET /status` reportando la versión servida, PID, estado del proceso y hora de inicio.
 
@@ -46,18 +46,18 @@ El servicio de serving implementa una política estricta de estabilidad operativ
 
 ## 4. Scripts Operacionales Vigentes
 
-Todas las herramientas operacionales operan contra el nombre canónico **`salary-predictor`**:
+Todas las herramientas operacionales operan contra el nombre canónico **`salary_predict_model`**:
 
 ### Inspección del Modelo y Versiones (`model_info.py`)
 ```bash
-python model_provider/scripts/model_info.py --model salary-predictor
+python model_provider/scripts/model_info.py --model salary_predict_model
 ```
 Permite auditar el estado del modelo, listar todas las versiones registradas y conocer qué versión tiene actualmente asignado el alias `champion`.
 
 ### Promoción a Producción (`promote_model.py`)
 ```bash
 python model_provider/scripts/promote_model.py \
-  --model salary-predictor \
+  --model salary_predict_model \
   --version <VERSION> \
   --alias champion
 ```
