@@ -141,13 +141,32 @@ server {
         return 200 "ok\n";
     }
 
+    # Rewrites internos para evitar respuestas 301
+    # cuando DVC consulta directorios sin "/" final.
+    location = /dvc {
+        rewrite ^ /dvc/ last;
+    }
+
+    location = /dvc/files {
+        rewrite ^ /dvc/files/ last;
+    }
+
+    location = /dvc/files/md5 {
+        rewrite ^ /dvc/files/md5/ last;
+    }
+
+    # Los directorios de primer nivel de DVC son prefijos
+    # hexadecimales de dos caracteres.
+    location ~ "^/dvc/files/md5/[0-9a-fA-F]{2}$" {
+        rewrite ^(.*)$ $1/ last;
+    }
+
     location /dvc/ {
         alias /srv/dvc-storage/;
 
-        autoindex off;
+        autoindex on;
+        autoindex_exact_size off;
 
-        # Lectura pública solamente.
-        # GET también habilita HEAD.
         limit_except GET {
             deny all;
         }

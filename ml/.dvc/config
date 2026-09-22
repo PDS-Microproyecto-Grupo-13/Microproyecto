@@ -5,4 +5,4 @@
 ['remote "gdrive-remote"']
     url = gdrive://1CNmcTbMiSGg3tfZ0HXeoK9a6lJsvO8vz
 ['remote "dvc-public"']
-    url = http://44.192.26.195:8080/dvc/
+    url = http://18.204.73.136:8080/dvc/
