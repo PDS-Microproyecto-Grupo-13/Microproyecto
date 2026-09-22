@@ -88,3 +88,11 @@ El frontend **no requiere archivo `.env`**. Todas las solicitudes hacia el backe
 - **No ejecuta inferencia**: No almacena estimadores ni realiza cálculos de Machine Learning en el cliente.
 - **No carga artefactos ni modelos**: Desconoce la estructura binaria de LightGBM o Scikit-Learn.
 - **No consulta MLflow Registry directamente**: Depende exclusivamente de los contratos HTTP expuestos por el backend.
+
+---
+
+## 8. Documentación Relacionada
+
+- [`../README.md`](../README.md) — Visión general y arquitectura E2E de SalaryPredict.
+- [`../DEPLOYMENT.md`](../DEPLOYMENT.md) — Manual reproducible de despliegue, bootstrap y puesta en marcha del stack completo.
+- [`../backend/README.md`](../backend/README.md) — Contrato de la API REST consumida por el frontend.

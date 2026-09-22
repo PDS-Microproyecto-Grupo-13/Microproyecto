@@ -620,3 +620,9 @@ El servidor debe quedar con:
 - acceso SSH por clave pública
 - escritura habilitada solo por SSH
 - HTTP público en modo solo lectura
+
+---
+
+## Siguiente paso
+
+Una vez validado el servidor, configure los clientes DVC siguiendo la guía en [`DVC_NGINX_CONFIG.md`](DVC_NGINX_CONFIG.md). Para el flujo general de despliegue del proyecto, consulte [`../../DEPLOYMENT.md`](../../DEPLOYMENT.md).

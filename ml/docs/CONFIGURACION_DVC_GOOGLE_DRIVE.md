@@ -102,3 +102,5 @@ git commit -m "mensaje descriptivo"
 dvc push
 git push
 ```
+
+Para la guía general de despliegue y bootstrap del proyecto, consulte [`../../DEPLOYMENT.md`](../../DEPLOYMENT.md). Para la visión del pipeline ML, consulte [`../README.md`](../README.md).

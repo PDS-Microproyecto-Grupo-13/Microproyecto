@@ -1,6 +1,6 @@
 # SalaryPredict — Infraestructura MLOps y Serving
 
-Módulo de infraestructura, gobernanza de modelos y servicio de inferencia para **SalaryPredict v1.0**. Provee el servidor central de MLflow, el contenedor de serving inmutable y las utilidades operacionales de promoción, detección de drift y operaciones que soportan el procedimiento operacional de rollback..
+Módulo de infraestructura, gobernanza de modelos y servicio de inferencia para **SalaryPredict v1.0**. Provee el servidor central de MLflow, el contenedor de serving inmutable y las utilidades operacionales de promoción, detección de drift y operaciones que soportan el procedimiento operacional de rollback.
 
 ---
 
@@ -78,6 +78,14 @@ docker compose restart inference
 ```
 Aplica de forma controlada la nueva versión promovida, descargando y recargando el artefacto en memoria (~5–15 s de ventana de inicialización).
 
+### Procedimiento Operacional de Rollback
+No existe un comando CLI independiente de rollback; este se ejecuta como un procedimiento operacional combinando las herramientas existentes:
+1. Reasignar el alias `champion` a la versión anterior estable con `promote_model.py`.
+2. Reiniciar el contenedor de inferencia con `docker compose restart inference`.
+3. Validar la sincronización con `check_alignment.py`.
+
+Consulte los detalles paso a paso en [`../DEPLOYMENT.md`](../DEPLOYMENT.md).
+
 ---
 
 ## 5. Puertos y Servicios de Red
@@ -107,4 +115,11 @@ pytest model_provider/tests
 - **Lógica de negocio**: No valida peticiones de usuarios finales (responsabilidad del Backend).
 - **Interfaz de usuario**: No provee componentes web (responsabilidad del Frontend).
 
-Para la puesta en marcha completa del stack junto con backend y frontend, consulte [`../DEPLOYMENT.md`](../DEPLOYMENT.md).
+---
+
+## 8. Documentación Relacionada
+
+- [`../README.md`](../README.md) — Visión general y arquitectura del monorepo SalaryPredict.
+- [`../DEPLOYMENT.md`](../DEPLOYMENT.md) — Manual reproducible de despliegue, bootstrap, verificación y rollback.
+- [`../ml/README.md`](../ml/README.md) — Pipeline ML reproducible, tracking y registro de candidatos.
+- [`../backend/README.md`](../backend/README.md) — Microservicio FastAPI que consume el servicio de inferencia.

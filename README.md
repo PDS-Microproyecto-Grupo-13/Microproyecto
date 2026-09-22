@@ -45,10 +45,10 @@ flowchart LR
 
 ## Componentes del Monorepo
 
-- **`frontend/`**: Tablero web interactivo en React 19 y Vite para capturar perfiles, visualizar estimaciones salariales y explorar diagnósticos.
-- **`backend/`**: Microservicio FastAPI que valida esquemas de entrada (Pydantic), traduce el contrato a MLflow, comprueba invariantes numéricas y expone la API REST.
-- **`ml/`**: Pipeline reproducible DVC para ingesta multi-snapshot, validación, preprocesamiento temporal, calificación, calibración de incertidumbre, entrenamiento dual LightGBM y evaluación sobre test ciego.
-- **`model_provider/`**: Infraestructura de tracking MLflow sobre SQLite, servidor de serving inmutable con reporte de estado en runtime (`start.py`) y utilidades operacionales CLI de promoción y verificación de drift.
+- **[`frontend/`](frontend/README.md)**: Tablero web interactivo en React 19 y Vite para capturar perfiles, visualizar estimaciones salariales y explorar diagnósticos.
+- **[`backend/`](backend/README.md)**: Microservicio FastAPI que valida esquemas de entrada (Pydantic), traduce el contrato a MLflow, comprueba invariantes numéricas y expone la API REST.
+- **[`ml/`](ml/README.md)**: Pipeline reproducible DVC para ingesta multi-snapshot, validación, preprocesamiento temporal, calificación, calibración de incertidumbre, entrenamiento dual LightGBM y evaluación sobre test ciego.
+- **[`model_provider/`](model_provider/README.md)**: Infraestructura de tracking MLflow sobre SQLite, servidor de serving inmutable con reporte de estado en runtime (`start.py`) y utilidades operacionales CLI de promoción y verificación de drift.
 
 ---
 
@@ -59,7 +59,7 @@ flowchart LR
 | **Frontend** | React 19, TypeScript, Vite, Tailwind CSS, Lucide Icons |
 | **Backend API** | FastAPI, Pydantic v2, HTTPX, Uvicorn |
 | **Modelado ML** | LightGBM, Scikit-Learn, Pandas, NumPy, Joblib |
-| **Gestión de Datos** | DVC (Data Version Control) sobre Google Drive / S3 |
+| **Gestión de Datos** | DVC (Data Version Control) con remoto configurable |
 | **Tracking & Registry** | MLflow 3 (Tracking Server, Model Registry, PyFunc flavor) |
 | **Orquestación & Despliegue** | Docker, Docker Compose v2, Nginx |
 
@@ -147,6 +147,7 @@ cd frontend && npm run lint && npm run build
 - [DEPLOYMENT.md](DEPLOYMENT.md) — Manual reproducible de despliegue, bootstrap desde cero, verificación y rollback.
 - [INGESTA_DATOS.md](INGESTA_DATOS.md) — Especificación técnica de la ingesta de vacantes desde la API de Foorilla.
 - [ATTRIBUTION.md](ATTRIBUTION.md) — Condiciones de licenciamiento y atribución de los datos bajo licencia CC BY-SA 4.0.
+- [ml/docs/](ml/docs/) — Guías de configuración de remotos DVC (Google Drive y servidor autogestionado Nginx + SSH).
 
 ---
 

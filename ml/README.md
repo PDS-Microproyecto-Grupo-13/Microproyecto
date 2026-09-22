@@ -48,12 +48,24 @@ cp .env.example .env
 
 ---
 
-## 3. Fuente de Datos
+## 3. Fuente de Datos y Remoto DVC
 
 - **Ruta canónica**: `data/raw/foorilla/jobs_*.csv`.
-- Los archivos CSV de corte son la materia prima inmutable de entrada.
+- Los archivos CSV de corte son la materia prima inmutable de entrada y los snapshots son administrados y versionados mediante DVC.
+- **Agnosticismo de backend**: El pipeline ML no necesita conocer qué backend de almacenamiento utiliza DVC.
+- **Obtención normal de datos**: El usuario obtiene los datos normalmente mediante:
+  ```bash
+  dvc pull
+  ```
+- **Credenciales y autenticación**: Las credenciales dependen del remoto elegido:
+  - En un servidor autogestionado Nginx/SSH, los consumidores pueden hacer `dvc pull` por HTTP sin credenciales, mientras que los escritores utilizan SSH autenticado para `dvc push`.
+  - En un remoto administrado como Google Drive, la autenticación se gestiona vía OAuth según el proveedor.
 - **Regla de preflight de integridad**: Todos los snapshots referenciados por punteros `.dvc` deben encontrarse materializados físicamente en la carpeta. Si falta algún archivo CSV, la etapa `collect` aborta automáticamente para evitar procesar un dataset parcial no planificado.
-- Para la descarga o sincronización de datos mediante DVC remoto (Google Drive / AWS S3), consulte las instrucciones detalladas en [`../DEPLOYMENT.md`](../DEPLOYMENT.md).
+- **Configuración del remoto**: La configuración concreta del remoto DVC se encuentra en `docs/`:
+  - [Configuración de DVC con Google Drive](docs/CONFIGURACION_DVC_GOOGLE_DRIVE.md)
+  - [Servidor DVC autogestionado con Docker, Nginx y SSH](docs/DVC_NGINX_SERVER.md)
+  - [Configuración y uso de clientes DVC (HTTP / SSH)](docs/DVC_NGINX_CONFIG.md)
+- Para la guía general de despliegue y bootstrap, consulte [`../DEPLOYMENT.md`](../DEPLOYMENT.md).
 
 ---
 
@@ -142,3 +154,14 @@ Las pruebas verifican:
 - Wrapper PyFunc, serialización, firmas e input examples (`test_pyfunc.py`).
 - Tracking en MLflow y linaje (`test_tracking.py`).
 - Idempotencia, tags y paridad en Model Registry (`test_registry.py`).
+
+---
+
+## 8. Documentación Relacionada
+
+- [`../README.md`](../README.md) — Visión general del monorepo y arquitectura E2E.
+- [`../DEPLOYMENT.md`](../DEPLOYMENT.md) — Manual reproducible de despliegue, bootstrap y operación.
+- [`../model_provider/README.md`](../model_provider/README.md) — Infraestructura MLflow, promoción, serving inmutable y alineación.
+- [`docs/CONFIGURACION_DVC_GOOGLE_DRIVE.md`](docs/CONFIGURACION_DVC_GOOGLE_DRIVE.md) — Guía de configuración para remoto DVC con Google Drive.
+- [`docs/DVC_NGINX_SERVER.md`](docs/DVC_NGINX_SERVER.md) — Servidor DVC autogestionado con Docker, Nginx y SSH.
+- [`docs/DVC_NGINX_CONFIG.md`](docs/DVC_NGINX_CONFIG.md) — Configuración y uso de clientes DVC (HTTP / SSH).

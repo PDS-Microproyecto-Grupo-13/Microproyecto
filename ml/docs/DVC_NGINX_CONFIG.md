@@ -1,6 +1,6 @@
 # Configuración y Uso de Clientes DVC
 
-Guía operativa para conectar clientes DVC al servidor autogestionado definido en el **Manual 1**, utilizando dos canales independientes sobre el mismo almacenamiento:
+Guía operativa para conectar clientes DVC al servidor autogestionado definido en [`DVC_NGINX_SERVER.md`](DVC_NGINX_SERVER.md), utilizando dos canales independientes sobre el mismo almacenamiento:
 
 - **`dvc-public`**: remoto HTTP de solo lectura para `dvc pull`, sin credenciales.
 - **`dvc-write`**: remoto SSH de lectura/escritura para `dvc push`, autenticado mediante clave pública.
@@ -715,3 +715,5 @@ dvc push -r dvc-write
 ```
 
 De esta forma la lectura permanece anónima y simple, mientras que la escritura conserva autenticación mediante claves SSH y no expone credenciales dentro del repositorio.
+
+Para la guía general de despliegue y bootstrap del proyecto, consulte [`../../DEPLOYMENT.md`](../../DEPLOYMENT.md).

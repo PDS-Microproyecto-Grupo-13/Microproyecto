@@ -19,8 +19,8 @@ La arquitectura preserva la inmutabilidad de producción: los experimentos gener
 Además de Docker y Git:
 - **Python 3.11** (recomendado; o 3.12)
 - Entorno virtual (`python -m venv .venv`)
-- Dependencias de `ml/` (`pip install -r ml/requirements.lock.txt`)
-- **DVC** con soporte remoto (`dvc-gdrive` o `dvc-s3`) y credenciales autorizadas, o posesión local de los archivos CSV.
+- Dependencias de `ml/` (`pip install -r ml/requirements.lock.txt`; consulte [`ml/README.md`](ml/README.md))
+- **DVC** con acceso a un remoto DVC configurado (las dependencias y credenciales requeridas dependen del backend de almacenamiento elegido) o posesión local de los archivos CSV.
 
 ---
 
@@ -134,15 +134,41 @@ ML_REQUIRE_CLEAN_GIT=false
 
 ### Paso 3: Disponibilizar los datos de entrada
 
-El pipeline requiere los snapshots en `ml/data/raw/foorilla/jobs_*.csv`. Existen dos opciones:
+El proyecto requiere acceso a un remoto DVC configurado o disponer localmente de los snapshots requeridos.
 
-- **Opción A (DVC Pull con acceso autorizado)**:
-  Si dispone de credenciales para el remoto en Google Drive o AWS S3:
-  ```bash
-  dvc pull
-  ```
-- **Opción B (Transferencia manual)**:
-  Copie físicamente los archivos `jobs_*.csv` requeridos por el checkout directamente en `ml/data/raw/foorilla/`. Todos los snapshots deben estar materializados: si existe un puntero `.dvc` para un snapshot cuyo CSV físico no esté disponible en el disco local, el preflight de integridad de `collect` abortará inmediatamente para impedir procesar un dataset parcial.
+#### Procedimiento estándar (DVC Pull)
+
+Desde el directorio `ml/`, ejecute:
+
+```bash
+cd ml
+dvc pull
+```
+
+> [!NOTE]
+> `dvc pull` no asume un proveedor específico ni requiere obligatoriamente Google OAuth, credenciales en la nube o claves SSH. Los requisitos de autenticación dependen exclusivamente del remoto DVC configurado.
+
+#### Alternativas de remoto DVC disponibles
+
+El pipeline ML no depende conceptualmente de un proveedor concreto. Existen dos implementaciones documentadas:
+
+- **Google Drive**:
+  Remoto administrado con autenticación y flujo propio de Google Drive. Requiere configurar credenciales locales en `.dvc/config.local`.
+  - Consulte la guía detallada en [`ml/docs/CONFIGURACION_DVC_GOOGLE_DRIVE.md`](ml/docs/CONFIGURACION_DVC_GOOGLE_DRIVE.md).
+
+- **Servidor Nginx + SSH**:
+  Implementación autogestionada con dos canales de acceso sobre el mismo almacenamiento:
+  - **HTTP read-only** (`dvc-public`) para `dvc pull` sin credenciales.
+  - **SSH autenticado** (`dvc-write`) mediante claves públicas para `dvc push`.
+  - Consulte las guías de infraestructura y clientes en:
+    - [`ml/docs/DVC_NGINX_SERVER.md`](ml/docs/DVC_NGINX_SERVER.md) (Despliegue del servidor DVC con Docker, Nginx y SSH).
+    - [`ml/docs/DVC_NGINX_CONFIG.md`](ml/docs/DVC_NGINX_CONFIG.md) (Configuración y uso de clientes DVC).
+
+#### Alternativa: Materialización manual de snapshots
+
+Si no se dispone de conexión a un remoto DVC:
+- Copie físicamente los archivos `jobs_*.csv` requeridos por el checkout directamente en `ml/data/raw/foorilla/`.
+- Todos los snapshots deben estar materializados: si existe un puntero `.dvc` para un snapshot cuyo CSV físico no esté disponible en el disco local, el preflight de integridad de `collect` abortará inmediatamente para impedir procesar un dataset parcial.
 
 ### Paso 4: Ejecutar el pipeline reproducible
 
@@ -289,7 +315,7 @@ stateDiagram-v2
     Sincronizado --> [*]
 ```
 
-El servidor de serving carga el modelo en memoria **una sola vez al arrancar** (`start.py`). No existe *hot reload* automático para prevenir interrupciones o cambios inesperados durante la atención de tráfico.
+El servidor de serving carga el modelo en memoria **una sola vez al arrancar** (`start.py`). No existe *hot reload* automático para prevenir interrupciones o cambios inesperados durante la atención de tráfico. Para más información sobre los scripts y la arquitectura de serving, consulte [`model_provider/README.md`](model_provider/README.md).
 
 ### 1. Promover una nueva versión validada
 ```bash

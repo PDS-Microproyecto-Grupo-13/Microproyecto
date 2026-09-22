@@ -58,6 +58,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 * **Esquema OpenAPI JSON:** `http://localhost:8000/openapi.json`
 * **Predicción salarial:** `POST http://localhost:8000/api/v1/predictions`
 * **Selector del modelo:** `GET http://localhost:8000/api/v1/predictions/model`
+* **Estado del runtime:** `GET http://localhost:8000/api/v1/predictions/status`
 
 ### Ejemplo de respuesta de Healthcheck
 
@@ -116,7 +117,30 @@ docker build -t mlops-backend .
 docker run --rm -p 8000:8000 --env-file .env mlops-backend
 ```
 
-El backend no carga artefactos de ML directamente. Traduce el contrato público al
-protocolo de MLflow y consulta `INFERENCE_BASE_URL`. `MODEL_NAME` y `MODEL_ALIAS`
-identifican el selector desplegado que se devuelve al tablero. Consulte
-[`../DEPLOYMENT.md`](../DEPLOYMENT.md) para ejecutar el flujo completo.
+---
+
+## 7. Arquitectura, Contratos y Fronteras
+
+### Interacción con el Servicio de Inferencia
+
+El backend no carga artefactos de ML directamente (`model.joblib` permanece en el servicio de inferencia). Su función es orquestar y validar:
+
+1. **Traducción de Contrato**: Recibe el payload JSON del frontend y lo traduce a la estructura `dataframe_split` requerida por el wrapper PyFunc de MLflow.
+2. **Inferencia HTTP (`:5001`)**: Envía la solicitud a `POST http://inference:5001/invocations`.
+3. **Sonda de Estado (`:5002`)**: Consulta de forma no bloqueante `GET http://inference:5002/status` para adjuntar la versión concreta cargada en memoria (`loaded_version`).
+4. **Validación de Invariantes**: Comprueba que las salidas salariales sean valores finitos, positivos, que el mínimo no supere al máximo y que el punto medio coincida con $(y_{min} + y_{max}) / 2$.
+
+### Modelo Canónico
+
+El backend opera contra el modelo canónico registrado:
+- **`MODEL_NAME`**: `salary_predict_model`
+- **`MODEL_ALIAS`**: `champion`
+
+### Fuera de Alcance del Backend
+
+- **NO entrena modelos**: El ciclo de entrenamiento y evaluación pertenece a `ml/`.
+- **NO carga modelos en memoria**: La ejecución del wrapper PyFunc reside en `model_provider/inference`.
+- **NO promueve modelos**: La asignación del alias `champion` corresponde a `model_provider/scripts/promote_model.py`.
+- **NO sirve interfaces de usuario**: La capa visual corresponde a `frontend/`.
+
+Para la orquestación completa del monorepo, consulte [`../README.md`](../README.md) y [`../DEPLOYMENT.md`](../DEPLOYMENT.md).
