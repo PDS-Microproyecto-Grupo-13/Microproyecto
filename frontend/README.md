@@ -9,6 +9,7 @@ Aplicación de interfaz de usuario de **SalaryPredict v1.0** desarrollada como u
 - Proporcionar la interfaz interactiva para capturar las características de un perfil laboral (cargo, nivel de experiencia, años, país, modalidad remota, empresa, tecnologías y temas).
 - Consumir el microservicio backend mediante rutas relativas `/api/...`.
 - Presentar visualmente las proyecciones salariales anuales en USD (mínimo, máximo y punto medio), advertencias operacionales y los metadatos del modelo en ejecución (`name`, `alias`, `version`).
+- Presentar en Home el snapshot real de `AnalyticsSummary` obtenido exclusivamente desde el backend.
 - Proveer vistas informativas y de exploración del proyecto (`Home`, `SalaryPrediction`, `ExploreData`, `Comparisons`, `About`).
 
 ---
@@ -82,10 +83,11 @@ Navegador / SPA  ──>  Backend (:8000)  ──>  Inference (:5001 / :5002)
 El frontend **no requiere archivo `.env`**. Todas las solicitudes hacia el backend se realizan mediante rutas relativas. La resolución del host y puerto es gestionada íntegramente por el proxy correspondiente (Vite o Nginx).
 
 Home consulta exclusivamente `GET /api/v1/analytics/summary`. Mientras espera
-muestra loading; un `404 analytics_not_published` produce el estado explícito
-"Analítica aún no publicada"; errores temporales o de red muestran una opción de
-reintento. No existen métricas mock ni persistencia/cache del snapshot en el
-navegador.
+muestra `loading`; con respuesta exitosa renderiza el estado `success`; un
+`404 analytics_not_published` produce el estado explícito "Analítica aún no
+publicada"; errores temporales o de red producen el estado `error` con opción de
+reintento. No existen estadísticas hardcoded, fallbacks mock ni
+persistencia/cache del snapshot en el navegador.
 
 ---
 
@@ -94,6 +96,7 @@ navegador.
 - **No ejecuta inferencia**: No almacena estimadores ni realiza cálculos de Machine Learning en el cliente.
 - **No carga artefactos ni modelos**: Desconoce la estructura binaria de LightGBM o Scikit-Learn.
 - **No consulta MLflow Registry directamente**: Depende exclusivamente de los contratos HTTP expuestos por el backend.
+- **No administra Home Analytics**: No conoce el POST de publicación, el bearer token, DVC ni rutas de artifacts; únicamente consume el GET público del backend.
 
 ---
 

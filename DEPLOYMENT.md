@@ -136,6 +136,28 @@ python model_provider/scripts/model_info.py --model salary_predict_model
 
 Si el servidor está protegido por autenticación, configure las credenciales según el mecanismo elegido sin almacenarlas en el repositorio.
 
+### 2.2. Variables de Home Analytics
+
+El backend recibe publicaciones administrativas y conserva su propia copia del
+último snapshot. Configure en el entorno de Docker Compose:
+
+```dotenv
+ANALYTICS_PUBLISH_TOKEN=<TOKEN_SEGURO_NO_VERSIONADO>
+ANALYTICS_STORAGE_PATH=/app/data/analytics_summary.json
+```
+
+El publicador ejecutado desde `ml/` utiliza:
+
+```dotenv
+ANALYTICS_PUBLISH_URL=http://localhost:8000/api/v1/analytics/snapshots
+ANALYTICS_PUBLISH_TOKEN=<MISMO_TOKEN_CONFIGURADO_EN_BACKEND>
+ANALYTICS_PUBLISH_TIMEOUT_SECONDS=10
+```
+
+`ANALYTICS_PUBLISH_TOKEN` debe coincidir en ambos lados y nunca debe almacenarse
+en Git. La URL corresponde al host desde el que se ejecuta el comando; ajústela
+si el backend no está expuesto en `localhost:8000`.
+
 ---
 
 ## 3. Modalidad A — Despliegue con Registry / Champion Existente
@@ -200,6 +222,21 @@ curl -s http://localhost:5002/status
 ```
 
 Abra `http://localhost:5173` en su navegador para interactuar con la aplicación.
+
+### Home Analytics en Modalidad A
+
+Home Analytics es independiente de que MLflow ya contenga un `champion`. Si el
+volumen persistente del backend ya conserva un snapshot, no se requiere ninguna
+acción. Compruébelo con:
+
+```bash
+curl -s http://localhost:8000/api/v1/analytics/summary
+```
+
+Si el GET devuelve `404 analytics_not_published`, publique un
+`dashboard_summary.json` válido siguiendo la sección de bootstrap de Home
+Analytics. Si el artifact no existe localmente, genérelo primero desde `ml/`
+con `dvc repro analytics`; MLflow no contiene ni suministra estas estadísticas.
 
 ---
 
@@ -297,7 +334,6 @@ El proyecto requiere acceso a un remoto DVC configurado o disponer localmente de
 Desde el directorio `ml/`, ejecute:
 
 ```bash
-cd ml
 dvc pull
 ```
 
@@ -334,13 +370,19 @@ Desde el directorio `ml/` con el entorno virtual activo:
 dvc repro
 ```
 
-Este comando ejecuta de forma determinista las 6 etapas del ciclo:
+Este comando ejecuta de forma determinista las 7 etapas del ciclo:
 1. `collect`: Consolida y deduplica snapshots crudos.
 2. `validate`: Comprueba invariantes de esquema y consistencia.
 3. `preprocess`: Particionamiento temporal ordenado 70/15/15 y cálculo de límites operacionales en train.
 4. `qualify`: Evaluación frente a baseline (DummyRegressor), verificación de gap temporal y calibración de incertidumbre conjunta al percentil 80%.
 5. `train`: Ajuste definitivo del ensamble dual LightGBM sobre `train + validation` (46,208 registros) y serialización de `model.joblib`.
 6. `evaluate`: Evaluación ciega en `test` (8,155 registros) y generación de reportes diagnósticos y de sensibilidad.
+7. `analytics`: Generación reproducible de `artifacts/reports/dashboard_summary.json`, sin llamadas HTTP ni publicación externa.
+
+> [!IMPORTANT]
+> `dvc repro` **no equivale** a `publish-analytics`. El primero genera artifacts
+> reproducibles, incluido el resumen analítico; el segundo es un side effect
+> HTTP explícito y permanece fuera del grafo DVC.
 
 ### Paso 5: Registrar la corrida en MLflow Tracking
 
@@ -414,9 +456,58 @@ Salida esperada (código de retorno 0):
 =================================================================
 ```
 
+### Paso 11: Publicar el snapshot inicial de Home Analytics
+
+Con el backend ya disponible, ejecute `publish-analytics` siguiendo la sección
+operacional siguiente. Esta publicación ocurre después del ciclo reproducible y
+permanece separada de `track`, `register-candidate`, promoción y serving. El
+frontend puede haberse iniciado antes: mientras no exista snapshot mostrará el
+estado `analytics_not_published` y no requiere reinicio después de publicar.
+
 ---
 
-## 5. Prueba de Predicción End-to-End (E2E)
+## 5. Bootstrap y operación de Home Analytics
+
+El backend puede iniciar correctamente sin analytics publicado. En ese estado:
+
+```text
+GET /api/v1/analytics/summary
+→ 404 analytics_not_published
+```
+
+Home continúa disponible y muestra **“Analítica aún no publicada”**, sin valores
+mock. Para publicar un artifact existente, asegúrese primero de que el backend
+esté iniciado y de que el token coincida con su configuración:
+
+```bash
+cd ml
+
+ANALYTICS_PUBLISH_URL=http://localhost:8000/api/v1/analytics/snapshots \
+ANALYTICS_PUBLISH_TOKEN='<TOKEN_CONFIGURADO_EN_BACKEND>' \
+python -m ml_pipeline publish-analytics
+```
+
+Después verifique el endpoint público:
+
+```bash
+curl -s http://localhost:8000/api/v1/analytics/summary
+```
+
+La respuesta debe ser HTTP 200 e incluir `"schema_version": "1.0"`.
+
+- No es necesario recalcular ML si
+  `ml/artifacts/reports/dashboard_summary.json` ya existe y es válido.
+- Si falta el artifact, ejecute `dvc repro analytics` antes de publicar.
+- Repetir `publish-analytics` con el mismo artifact es seguro; el backend
+  responde `unchanged` y conserva el snapshot vigente.
+- Después de publicar, el frontend no necesita reinicio: basta recargar la
+  página o utilizar el reintento de Home.
+- `analytics` contiene métricas de evaluación asociadas al snapshot analítico;
+  no determina qué modelo es `champion` ni cuál está servido.
+
+---
+
+## 6. Prueba de Predicción End-to-End (E2E)
 
 Pruebe la API directamente consumiendo el microservicio backend mediante `curl`:
 
@@ -461,7 +552,7 @@ curl -s -X POST http://localhost:8000/api/v1/predictions \
 
 ---
 
-## 6. Ciclo Operacional: Promoción, Drift y Rollback
+## 7. Ciclo Operacional: Promoción, Drift y Rollback
 
 El principio rector del despliegue es **`PROMOTE != DEPLOY`**:
 
@@ -522,7 +613,7 @@ python model_provider/scripts/check_alignment.py
 
 ---
 
-## 7. Despliegue en Servidor Remoto / Instancia EC2
+## 8. Despliegue en Servidor Remoto / Instancia EC2
 
 En despliegues sobre máquinas virtuales independientes (Ubuntu / Debian en AWS EC2, GCP Compute Engine, etc.), Docker Compose se mantiene como el mecanismo canónico.
 
@@ -546,11 +637,20 @@ Configure las reglas de entrada en el cortafuegos o grupo de seguridad:
 *Nota de acceso al tracking*: Si el panel de MLflow UI (`:5000`) será accedido mediante una IP pública o dominio, puede ser necesario incluir dicho host en `MLFLOW_ALLOWED_HOSTS`, según la configuración vigente del servidor de tracking en `docker-compose.yml`.
 
 ### 3. Persistencia de almacenamiento
-Los volúmenes nombrados `mlops-mlflow-db-data` y `mlops-mlflow-artifact-data` se almacenan en el sistema de archivos del host (`/var/lib/docker/volumes/`). En instancias EC2, asegúrese de que el disco raíz o el volumen EBS no sea efímero para conservar el historial de runs y artefactos.
+Los volúmenes nombrados `mlops-mlflow-db-data`,
+`mlops-mlflow-artifact-data` y `mlops-backend-analytics-data` se almacenan en el
+sistema de archivos del host (`/var/lib/docker/volumes/`). En instancias EC2,
+asegúrese de que el disco raíz o el volumen EBS no sea efímero para conservar el
+historial de runs, artifacts y el último snapshot analítico publicado.
+
+El volumen de Home Analytics sobrevive reinicios, recreaciones normales del
+contenedor y ciclos `docker compose down/up`. `docker compose down -v` lo
+elimina; en ese caso basta volver a publicar un `dashboard_summary.json`
+existente, sin reejecutar ML.
 
 ---
 
-## 8. Resolución de Problemas Comunes (Troubleshooting)
+## 9. Resolución de Problemas Comunes (Troubleshooting)
 
 | Síntoma | Causa Raíz | Solución |
 | :--- | :--- | :--- |
@@ -560,3 +660,5 @@ Los volúmenes nombrados `mlops-mlflow-db-data` y `mlops-mlflow-artifact-data` s
 | `Error: Port already allocated (5000, 8000, 5173)` | Otro proceso local o contenedor previo ocupa el puerto del host. | Identifique el proceso (`lsof -i :<PUERTO>` o `netstat -tuln`) y deténgalo, o ajuste el mapeo de puertos en `docker-compose.yml`. |
 | `ImportError: libgomp.so.1 cannot open shared object file` | Ocurre al ejecutar LightGBM directamente en Linux host sin la librería OpenMP instalada. | Ejecute `sudo apt-get update && sudo apt-get install -y libgomp1` en la máquina anfitriona. |
 | `champion` existe en MLflow remoto pero `inference` reporta `alias_lookup_failed` | El pipeline/scripts apuntan al MLflow remoto, pero el contenedor `inference` continúa usando `http://mlflow-tracking:5000` u otro Registry. | Compare `MLFLOW_TRACKING_URI` en host y contenedor (`docker compose config`). Todos los componentes deben apuntar al mismo MLflow objetivo. |
+| Home muestra “Analítica aún no publicada” | El backend está disponible, pero su almacenamiento todavía no contiene un snapshot. | Publique el `dashboard_summary.json` existente con `python -m ml_pipeline publish-analytics`; no es necesario reentrenar ni consultar MLflow. |
+| `publish-analytics` recibe HTTP 401 | El token del publicador falta o no coincide con `ANALYTICS_PUBLISH_TOKEN` del backend. | Configure el mismo secreto en ambos entornos sin imprimirlo ni versionarlo. |

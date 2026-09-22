@@ -130,20 +130,18 @@ El backend acepta el contrato estricto `AnalyticsSummary` schema `1.0` mediante
 `Authorization: Bearer <ANALYTICS_PUBLISH_TOKEN>`. La última publicación se
 guarda de forma atómica en `ANALYTICS_STORAGE_PATH` (por defecto,
 `/app/data/analytics_summary.json`) y Docker Compose respalda `/app/data` con un
-volumen propio del backend.
+volumen propio del backend, `mlops-backend-analytics-data`. El POST es
+administrativo y responde `created`, `replaced` o `unchanged` según el estado
+persistido.
 
 `GET /api/v1/analytics/summary` es público y read-only. Antes de la primera
 publicación devuelve `404 analytics_not_published`; después devuelve exactamente
 el summary persistido. Todas sus respuestas usan `Cache-Control: no-store`.
 
-Bootstrap operativo, con el artifact de ML ya existente:
-
-```bash
-cd ../ml
-ANALYTICS_PUBLISH_URL=http://localhost:8000/api/v1/analytics/snapshots \
-ANALYTICS_PUBLISH_TOKEN='<mismo-token-del-backend>' \
-python -m ml_pipeline publish-analytics
-```
+Para operar esta funcionalidad, configure `ANALYTICS_PUBLISH_TOKEN` sin
+versionar el secreto y, si se requiere otra ubicación, ajuste
+`ANALYTICS_STORAGE_PATH`. El procedimiento de bootstrap y publicación E2E está
+en [`../DEPLOYMENT.md`](../DEPLOYMENT.md).
 
 Publicar es una operación explícita e independiente de DVC. El backend no lee
 artifacts ni datasets de `ml/`, no ejecuta DVC, no recalcula estadísticas y no

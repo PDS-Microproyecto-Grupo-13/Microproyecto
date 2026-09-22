@@ -25,6 +25,7 @@ A partir de las características del perfil laboral (título, experiencia, país
 ```mermaid
 flowchart TD
     UI["Frontend (React 19 + TypeScript)<br/>:5173"] -->|"HTTP POST /api/v1/predictions"| API["Backend (FastAPI)<br/>:8000"]
+    UI -->|"HTTP GET /api/v1/analytics/summary"| API
     API -->|"HTTP POST /invocations"| INF["Inference Service (MLflow PyFunc)<br/>:5001"]
     INF -->|"Al arrancar: resuelve alias champion"| REG["MLflow Registry & Tracking<br/>:5000"]
     API -.->|"Sonda HTTP :5002/status"| INF
@@ -34,7 +35,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    DATA["Foorilla Snapshots<br/>(CSV)"] --> DVC["DVC Pipeline<br/>(6 etapas)"]
+    DATA["Foorilla Snapshots<br/>(CSV)"] --> DVC["DVC Pipeline<br/>(7 etapas)"]
     DVC --> TR["track<br/>(MLflow Run)"]
     TR --> RC["register candidate<br/>(Model Registry)"]
     RC --> PR["promote champion<br/>(Alias)"]
@@ -46,8 +47,8 @@ flowchart LR
 ## Componentes del Monorepo
 
 - **[`frontend/`](frontend/README.md)**: Tablero web interactivo en React 19 y Vite para capturar perfiles, visualizar estimaciones salariales y explorar diagnósticos.
-- **[`backend/`](backend/README.md)**: Microservicio FastAPI que valida esquemas de entrada (Pydantic), traduce el contrato a MLflow, comprueba invariantes numéricas y expone la API REST.
-- **[`ml/`](ml/README.md)**: Pipeline reproducible DVC para ingesta multi-snapshot, validación, preprocesamiento temporal, calificación, calibración de incertidumbre, entrenamiento dual LightGBM y evaluación sobre test ciego.
+- **[`backend/`](backend/README.md)**: Microservicio FastAPI que valida esquemas de entrada (Pydantic), traduce el contrato a MLflow, comprueba invariantes numéricas, conserva el último snapshot de Home Analytics y expone la API REST.
+- **[`ml/`](ml/README.md)**: Pipeline reproducible DVC para ingesta multi-snapshot, validación, preprocesamiento temporal, calificación, calibración de incertidumbre, entrenamiento dual LightGBM, evaluación sobre test ciego y generación de Home Analytics.
 - **[`model_provider/`](model_provider/README.md)**: Infraestructura de tracking MLflow sobre SQLite, servidor de serving inmutable con reporte de estado en runtime (`start.py`) y utilidades operacionales CLI de promoción y verificación de drift.
 
 ---
@@ -70,11 +71,13 @@ flowchart LR
 El flujo reproducible de modelado en `ml/` se estructura en dos fases complementarias:
 
 1. **Gobernado por DVC (`dvc repro`)**:
-   `collect -> validate -> preprocess -> qualify -> train -> evaluate`
+   `collect -> validate -> preprocess -> qualify -> train -> evaluate -> analytics`
 2. **Operaciones operacionales externas**:
-   `track -> register-candidate -> promote -> redeploy`
+   `track`, `register-candidate` y `publish-analytics`; la promoción y el redeploy se administran desde `model_provider/`.
 
-> **Principio de gobierno**: `train != track != register != promote != deploy`. El entrenamiento produce artefactos locales; el tracking registra el experimento; el registro crea una versión formal candidata; la promoción reasigna el alias de producción; y el despliegue actualiza el serving inmutable en memoria.
+> **Principio de gobierno**: `train != track != register != promote != deploy` y `dvc repro != publish-analytics`. DVC genera localmente `dashboard_summary.json`; su publicación al backend es explícita y permanece fuera del grafo reproducible.
+
+Home obtiene estadísticas reales exclusivamente del backend. El snapshot se calcula reproduciblemente en `ml/`, se publica de forma explícita y el frontend lo consulta sin acceder a DVC, MLflow ni artifacts. Consulte [DEPLOYMENT.md](DEPLOYMENT.md) para el bootstrap y la operación completos.
 
 ---
 
@@ -117,6 +120,7 @@ docker compose up -d --build
 | :--- | :--- | :--- |
 | **Frontend Web** | `http://localhost:5173` | Tablero de usuario interactivo |
 | **Backend API & Swagger** | `http://localhost:8000/docs` | Documentación interactiva OpenAPI |
+| **Home Analytics** | `http://localhost:8000/api/v1/analytics/summary` | Snapshot analítico público y read-only |
 | **MLflow UI** | `http://localhost:5000` | Experimentos, corridas y Model Registry |
 | **Runtime Serving Status** | `http://localhost:5002/status` | Estado y versión del modelo en ejecución |
 

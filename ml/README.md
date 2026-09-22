@@ -8,12 +8,12 @@ Módulo central de Machine Learning para **SalaryPredict v1.0**. Implementa el c
 
 El módulo `ml/` cubre de forma autónoma:
 ```text
-Datos Crudos ──> Validación ──> Preprocesamiento ──> Calificación ──> Entrenamiento ──> Evaluación ──> Analytics
-                                                                                                           └──> publicación explícita
-Evaluación ──> Tracking ──> Registro de Candidato
+DVC:       Datos Crudos ─> Validación ─> Preprocesamiento ─> Calificación ─> Entrenamiento ─> Evaluación ─> Analytics
+Fuera DVC: Evaluación ─> Tracking ─> Registro de Candidato
+            dashboard_summary.json ─> publicación explícita
 ```
 
-- **Frontera de responsabilidad**: El flujo de este módulo **termina estrictamente en `register-candidate`**.
+- **Frontera de responsabilidad**: La rama de gobierno del modelo termina en `register-candidate`; la rama analítica termina en la publicación HTTP explícita de un artifact ya generado. Ninguna de ambas promueve ni despliega modelos.
 - **Fuera de alcance de `ml/`**:
   - **NO** promueve modelos al alias `champion`.
   - **NO** despliega ni reinicia servicios de inferencia.
@@ -108,7 +108,7 @@ La etapa reproducible puede ejecutarse o reconstruirse de forma aislada:
 dvc repro analytics
 ```
 
-Produce `artifacts/reports/dashboard_summary.json` schema 1.0 a partir de artifacts locales y de la población modelable completa. Salarios, seniority, work mode y tecnologías describen las filas con `target_source == data.target_scope`. Las tecnologías son **menciones detectadas por el extractor canónico** `skill_*`, no una ontología exhaustiva ni feature importance.
+Produce `artifacts/reports/dashboard_summary.json`, contrato `AnalyticsSummary` schema `1.0`, a partir de artifacts locales y de la población modelable completa. Contiene analytics del dataset, distribuciones de salarios, seniority y modalidad, frecuencia real de skills, métricas de evaluación asociadas al snapshot analítico y metadata de linaje. Las tecnologías son **menciones detectadas por el extractor canónico** `skill_*`, no una ontología exhaustiva ni feature importance; las métricas de evaluación no identifican necesariamente al modelo `champion` servido.
 
 La publicación es una operación administrativa separada y fuera de DVC:
 
