@@ -40,11 +40,112 @@ MODEL_ALIAS=champion
 CORS_ORIGINS=http://localhost:5173,http://localhost:80,http://localhost,http://<IP_O_DOMINIO>:5173
 ```
 
+### 2.1. Selección del servidor MLflow: local o remoto
+
+La ubicación de MLflow es una decisión independiente de las modalidades A/B:
+
+- **Modalidad A/B** describe el **estado del Registry**: si ya existe un `champion` o si debe crearse desde cero.
+- **MLflow local/remoto** describe **dónde vive Tracking + Model Registry + artifacts**.
+
+Por tanto, ambas modalidades pueden operar contra un MLflow local o contra un servidor MLflow remoto compartido.
+
+| Configuración | Tracking / Registry | ¿Se levanta `mlflow-tracking` local? |
+| :--- | :--- | :--- |
+| **MLflow local** | Servicio Docker Compose del propio checkout | **Sí** |
+| **MLflow remoto** | Servidor externo accesible por HTTP/HTTPS | **No** |
+
+`MLFLOW_TRACKING_URI` selecciona el servidor MLflow utilizado por cada cliente. No copia modelos entre servidores ni sincroniza Registries: todos los componentes que participan en el ciclo deben apuntar explícitamente al **mismo MLflow objetivo**.
+
+Los componentes que necesitan conocer el MLflow objetivo son:
+
+```text
+ml_pipeline track / register-candidate
+            │
+model_provider scripts
+            │
+inference (resuelve champion al arrancar)
+            │
+            └──> MLFLOW_TRACKING_URI
+                    │
+                    ├── Tracking
+                    ├── Model Registry
+                    └── Artifact Store
+```
+
+El `backend` y el `frontend` no necesitan acceso directo a MLflow.
+
+#### MLflow local
+
+Para comandos ejecutados desde el host:
+
+```dotenv
+MLFLOW_TRACKING_URI=http://localhost:5000
+```
+
+Dentro de la red de Docker, el servicio de inferencia utiliza normalmente:
+
+```text
+http://mlflow-tracking:5000
+```
+
+En esta modalidad el servicio `mlflow-tracking` forma parte del despliegue local.
+
+#### MLflow remoto
+
+Ejemplo conceptual:
+
+```dotenv
+MLFLOW_TRACKING_URI=https://<MLFLOW_HOST>
+```
+
+o, si se expone mediante un puerto específico:
+
+```dotenv
+MLFLOW_TRACKING_URI=http://<MLFLOW_HOST>:5000
+```
+
+El servidor remoto debe proporcionar:
+
+- MLflow Tracking API accesible desde la máquina de entrenamiento y desde el contenedor de inferencia.
+- Model Registry con el modelo y aliases correspondientes.
+- Acceso a los artifacts de las versiones registradas. La autenticación adicional depende de cómo esté configurado el servidor y su artifact store.
+- Conectividad de red y, si corresponde, credenciales suministradas fuera de Git.
+
+Para el módulo `ml/`, configure `ml/.env` contra el servidor objetivo:
+
+```dotenv
+MLFLOW_TRACKING_URI=https://<MLFLOW_HOST>
+MLFLOW_EXPERIMENT_NAME=salary-prediction
+MLFLOW_MODEL_NAME=salary_predict_model
+ML_REQUIRE_CLEAN_GIT=false
+```
+
+Los scripts administrativos y el servicio `inference` deben usar ese mismo `MLFLOW_TRACKING_URI`.
+
+> [!IMPORTANT]
+> Cambiar únicamente `ml/.env` configura los comandos ejecutados desde `ml/`; no implica automáticamente que el contenedor `inference` cambie de servidor. Antes de utilizar MLflow remoto, ejecute `docker compose config` y confirme que `inference` recibe el `MLFLOW_TRACKING_URI` remoto. Si `docker-compose.yml` fija explícitamente `http://mlflow-tracking:5000`, la configuración actual sigue siendo local-only y requiere parametrizar esa variable o utilizar un override de Compose antes de considerar soportado el modo remoto.
+
+Verificación mínima de un MLflow remoto:
+
+```bash
+curl -fsS https://<MLFLOW_HOST>/ >/dev/null && echo "MLflow remoto accesible"
+
+export MLFLOW_TRACKING_URI=https://<MLFLOW_HOST>
+python model_provider/scripts/model_info.py --model salary_predict_model
+```
+
+Si el servidor está protegido por autenticación, configure las credenciales según el mecanismo elegido sin almacenarlas en el repositorio.
+
 ---
 
 ## 3. Modalidad A — Despliegue con Registry / Champion Existente
 
-Utilice esta modalidad cuando el servidor MLflow ya contenga el modelo `salary_predict_model` con el alias `champion` asignado (por ejemplo, al reutilizar los volúmenes locales persistentes de Docker `mlops-mlflow-db-data` y `mlops-mlflow-artifact-data`, o al conectar con un MLflow corporativo).
+Utilice esta modalidad cuando el **MLflow objetivo**, local o remoto, ya contenga el modelo `salary_predict_model` con el alias `champion` asignado. Puede tratarse de volúmenes Docker persistentes reutilizados o de un servidor MLflow compartido.
+
+Antes de levantar la aplicación, determine explícitamente cuál será el MLflow objetivo:
+
+- **Local**: el stack utilizará `mlflow-tracking`.
+- **Remoto**: configure `MLFLOW_TRACKING_URI` hacia el servidor externo y verifique que `inference` reciba esa misma URI. No es necesario levantar un Tracking Server local.
 
 ### Paso 1: Clonar y validar configuración
 
@@ -56,11 +157,24 @@ cd Microproyecto
 docker compose config
 ```
 
-### Paso 2: Levantar el stack completo
+### Paso 2: Levantar los servicios requeridos
+
+**Con MLflow local**:
 
 ```bash
 docker compose up -d --build
 ```
+
+**Con MLflow remoto**:
+
+No levante un Tracking Server local. Una vez confirmado que `inference` utiliza el `MLFLOW_TRACKING_URI` remoto, levante únicamente los servicios de aplicación:
+
+```bash
+docker compose up -d --build inference backend frontend
+```
+
+> [!NOTE]
+> Si la definición vigente de Compose fuerza `mlflow-tracking` mediante `depends_on` o fija su URI internamente, primero debe adaptarse/parametrizarse Compose para soportar realmente MLflow remoto. No deben coexistir accidentalmente dos Registries diferentes dentro del mismo despliegue.
 
 ### Paso 3: Esperar y comprobar healthchecks
 
@@ -68,11 +182,13 @@ docker compose up -d --build
 docker compose ps
 ```
 
-Todos los contenedores deben reportar estado saludable o activo:
+Con MLflow local, todos los servicios del stack deben estar activos:
 - `mlops-tracking`: `(healthy)` en puerto `5000`
 - `mlops-inference`: `(healthy)` en puertos `5001` (serving) y `5002` (status)
 - `mlops-backend`: `(healthy)` en puerto `8000`
 - `mlops-frontend`: `Up` en puerto `5173`
+
+Con MLflow remoto, `mlops-tracking` no forma parte del stack local; verifique en su lugar la disponibilidad del servidor remoto y que `inference` haya cargado una versión válida de `champion`.
 
 Comprobación rápida vía HTTP:
 ```bash
@@ -89,22 +205,54 @@ Abra `http://localhost:5173` en su navegador para interactuar con la aplicación
 
 ## 4. Modalidad B — Bootstrap Completo desde una Máquina Limpia
 
-Utilice este procedimiento cuando despliegue en un **servidor o máquina totalmente limpia** donde la base de datos de MLflow esté vacía y no exista aún ningún modelo registrado ni alias `champion`.
+Utilice este procedimiento cuando el **MLflow objetivo** todavía no contenga el modelo registrado y/o el alias `champion`. La máquina de aplicación puede estar limpia aunque el servidor MLflow sea remoto y ya exista como infraestructura.
 
 > [!IMPORTANT]
-> El servicio `inference` (`start.py`) resuelve el alias `champion` de forma estricta en el momento de arrancar. Si se intenta levantar antes de registrar y promover el modelo, abortará con `alias_lookup_failed`. Se debe seguir el orden estricto indicado a continuación.
+> El servicio `inference` (`start.py`) resuelve el alias `champion` de forma estricta en el momento de arrancar. Si se intenta levantar antes de registrar y promover el modelo en el MLflow objetivo, abortará con `alias_lookup_failed`. Se debe seguir el orden estricto indicado a continuación.
 
-### Paso 1: Levantar exclusivamente el servidor de Tracking
+### Paso 1: Preparar el MLflow objetivo
+
+Elija una de las dos variantes.
+
+#### Variante local
+
+Levante exclusivamente el servidor de Tracking:
 
 ```bash
 docker compose up -d --build mlflow-tracking
 ```
 
-Compruebe que el servidor MLflow responda:
+Compruebe que responda:
+
 ```bash
 curl -sI http://localhost:5000/ | head -n 5
 # Debe retornar: HTTP/1.1 200 OK
 ```
+
+Para los comandos ejecutados desde el host:
+
+```dotenv
+MLFLOW_TRACKING_URI=http://localhost:5000
+```
+
+#### Variante remota
+
+No levante `mlflow-tracking` local. Configure el endpoint remoto como objetivo:
+
+```dotenv
+MLFLOW_TRACKING_URI=https://<MLFLOW_HOST>
+```
+
+Compruebe conectividad y acceso al Registry:
+
+```bash
+curl -fsS https://<MLFLOW_HOST>/ >/dev/null && echo "MLflow remoto accesible"
+
+export MLFLOW_TRACKING_URI=https://<MLFLOW_HOST>
+python model_provider/scripts/model_info.py --model salary_predict_model
+```
+
+Un resultado sin versiones registradas es válido en esta modalidad B: los siguientes pasos crearán el Run, la versión candidata y posteriormente el alias `champion` en **ese mismo Registry remoto**.
 
 ### Paso 2: Preparar el entorno de Machine Learning
 
@@ -124,13 +272,21 @@ Configure las variables de tracking para el módulo ML copiando su plantilla:
 cp .env.example .env
 ```
 
-Verifique que `ml/.env` contenga:
+Verifique que `ml/.env` apunte al **MLflow objetivo elegido en el Paso 1**:
+
 ```dotenv
+# MLflow local:
 MLFLOW_TRACKING_URI=http://localhost:5000
+
+# O, para MLflow remoto:
+# MLFLOW_TRACKING_URI=https://<MLFLOW_HOST>
+
 MLFLOW_EXPERIMENT_NAME=salary-prediction
 MLFLOW_MODEL_NAME=salary_predict_model
 ML_REQUIRE_CLEAN_GIT=false
 ```
+
+No ejecute `track` contra un servidor y `register-candidate` contra otro: Run, Registry y artifacts deben pertenecer al mismo MLflow objetivo.
 
 ### Paso 3: Disponibilizar los datos de entrada
 
@@ -228,11 +384,14 @@ python model_provider/scripts/promote_model.py \
 
 ### Paso 9: Levantar el resto de la aplicación
 
-Una vez que `salary_predict_model@champion` existe formalmente en el Registry:
+Una vez que `salary_predict_model@champion` existe formalmente en el **MLflow objetivo**:
 
 ```bash
 docker compose up -d --build inference backend frontend
 ```
+
+- Con **MLflow local**, `inference` debe resolver `champion` contra `mlflow-tracking`.
+- Con **MLflow remoto**, `inference` debe resolver `champion` contra el mismo `MLFLOW_TRACKING_URI` utilizado por `track`, `register-candidate` y los scripts de gobierno; no debe depender de un Registry local vacío.
 
 ### Paso 10: Verificar alineación operacional
 
@@ -400,3 +559,4 @@ Los volúmenes nombrados `mlops-mlflow-db-data` y `mlops-mlflow-artifact-data` s
 | `Backend returns HTTP 502 / ExternalServiceError` | El backend no logra comunicarse con `http://inference:5001`. | Confirme que el contenedor `inference` esté saludable con `docker compose ps` y responda en su red. |
 | `Error: Port already allocated (5000, 8000, 5173)` | Otro proceso local o contenedor previo ocupa el puerto del host. | Identifique el proceso (`lsof -i :<PUERTO>` o `netstat -tuln`) y deténgalo, o ajuste el mapeo de puertos en `docker-compose.yml`. |
 | `ImportError: libgomp.so.1 cannot open shared object file` | Ocurre al ejecutar LightGBM directamente en Linux host sin la librería OpenMP instalada. | Ejecute `sudo apt-get update && sudo apt-get install -y libgomp1` en la máquina anfitriona. |
+| `champion` existe en MLflow remoto pero `inference` reporta `alias_lookup_failed` | El pipeline/scripts apuntan al MLflow remoto, pero el contenedor `inference` continúa usando `http://mlflow-tracking:5000` u otro Registry. | Compare `MLFLOW_TRACKING_URI` en host y contenedor (`docker compose config`). Todos los componentes deben apuntar al mismo MLflow objetivo. |
