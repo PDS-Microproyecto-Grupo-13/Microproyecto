@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +18,9 @@ class Settings:
     mlflow_experiment_name: str
     mlflow_model_name: str
     require_clean_git: bool
+    analytics_publish_url: str | None = None
+    analytics_publish_token: str | None = field(default=None, repr=False)
+    analytics_publish_timeout_seconds: str | None = None
 
     @classmethod
     def load(cls, root: Path | None = None) -> "Settings":
@@ -35,6 +38,11 @@ class Settings:
             mlflow_model_name=os.getenv("MLFLOW_MODEL_NAME", "salary_predict_model"),
             require_clean_git=os.getenv("ML_REQUIRE_CLEAN_GIT", "false").lower()
             in {"1", "true", "yes"},
+            analytics_publish_url=os.getenv("ANALYTICS_PUBLISH_URL"),
+            analytics_publish_token=os.getenv("ANALYTICS_PUBLISH_TOKEN"),
+            analytics_publish_timeout_seconds=os.getenv(
+                "ANALYTICS_PUBLISH_TIMEOUT_SECONDS", "10"
+            ),
         )
 
     def path(self, relative: str) -> Path:

@@ -4,6 +4,7 @@ import argparse
 import logging
 from collections.abc import Callable
 
+from ml_pipeline.analytics import analytics
 from ml_pipeline.common.logging import configure_logging
 from ml_pipeline.data.collect import collect
 from ml_pipeline.data.preprocess import preprocess
@@ -11,6 +12,7 @@ from ml_pipeline.data.validate import validate
 from ml_pipeline.modeling.evaluate import evaluate
 from ml_pipeline.modeling.qualify import qualify
 from ml_pipeline.modeling.train import train
+from ml_pipeline.publish_analytics import PublishAnalyticsError, publish_analytics
 from ml_pipeline.settings import Settings
 from ml_pipeline.tracking.mlflow_tracker import track
 from ml_pipeline.tracking.registry import register_candidate
@@ -23,8 +25,10 @@ COMMANDS: dict[str, Callable[[Settings], object]] = {
     "qualify": qualify,
     "train": train,
     "evaluate": evaluate,
+    "analytics": analytics,
     "track": track,
     "register-candidate": register_candidate,
+    "publish-analytics": publish_analytics,
 }
 
 
@@ -42,6 +46,9 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         COMMANDS[args.command](Settings.load())
+    except PublishAnalyticsError as error:
+        LOGGER.error("%s | result=failed | error=%s", args.command, error)
+        return error.exit_code
     except Exception as error:
         LOGGER.error("%s | result=failed | error=%s", args.command, error)
         return 1

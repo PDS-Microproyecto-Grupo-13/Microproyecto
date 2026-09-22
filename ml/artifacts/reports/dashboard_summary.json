@@ -1,0 +1,176 @@
+{
+  "dataset": {
+    "counts": {
+      "modelable_rows": 54363,
+      "raw_snapshot_rows": 333773,
+      "validated_rows": 260158
+    },
+    "data_range": {
+      "published_max": "2026-09-01T05:37:04Z",
+      "published_min": "2025-01-01T00:13:20Z"
+    },
+    "salary_midpoint": {
+      "currency": "USD",
+      "maximum_usd": 2190158.0,
+      "mean_usd": 167538.99,
+      "median_usd": 163000.0,
+      "minimum_usd": 412.0,
+      "period": "annual"
+    },
+    "salary_midpoint_distribution": [
+      {
+        "count": 994,
+        "lower_bound_usd": 0,
+        "proportion": 0.018284,
+        "upper_bound_usd": 50000
+      },
+      {
+        "count": 6125,
+        "lower_bound_usd": 50000,
+        "proportion": 0.112669,
+        "upper_bound_usd": 100000
+      },
+      {
+        "count": 14686,
+        "lower_bound_usd": 100000,
+        "proportion": 0.270147,
+        "upper_bound_usd": 150000
+      },
+      {
+        "count": 17903,
+        "lower_bound_usd": 150000,
+        "proportion": 0.329323,
+        "upper_bound_usd": 200000
+      },
+      {
+        "count": 9652,
+        "lower_bound_usd": 200000,
+        "proportion": 0.177547,
+        "upper_bound_usd": 250000
+      },
+      {
+        "count": 5003,
+        "lower_bound_usd": 250000,
+        "proportion": 0.09203,
+        "upper_bound_usd": null
+      }
+    ],
+    "seniority_distribution": [
+      {
+        "category": "SE",
+        "count": 34214,
+        "proportion": 0.629362
+      },
+      {
+        "category": "MI",
+        "count": 15792,
+        "proportion": 0.290492
+      },
+      {
+        "category": "EN",
+        "count": 2968,
+        "proportion": 0.054596
+      },
+      {
+        "category": "EX",
+        "count": 1342,
+        "proportion": 0.024686
+      },
+      {
+        "category": "desconocido",
+        "count": 47,
+        "proportion": 0.000865
+      }
+    ],
+    "source": "foorilla",
+    "target_scope": "reportado",
+    "top_technologies": [
+      {
+        "count": 35936,
+        "proportion": 0.661038,
+        "technology": "python"
+      },
+      {
+        "count": 23991,
+        "proportion": 0.441311,
+        "technology": "sql"
+      },
+      {
+        "count": 20737,
+        "proportion": 0.381454,
+        "technology": "machine_learning"
+      },
+      {
+        "count": 16706,
+        "proportion": 0.307305,
+        "technology": "aws"
+      },
+      {
+        "count": 11876,
+        "proportion": 0.218457,
+        "technology": "spark"
+      },
+      {
+        "count": 11601,
+        "proportion": 0.213399,
+        "technology": "azure"
+      },
+      {
+        "count": 8818,
+        "proportion": 0.162206,
+        "technology": "kubernetes"
+      },
+      {
+        "count": 7763,
+        "proportion": 0.142799,
+        "technology": "pytorch"
+      }
+    ],
+    "work_mode_distribution": [
+      {
+        "category": "presencial",
+        "count": 41934,
+        "proportion": 0.77137
+      },
+      {
+        "category": "remoto",
+        "count": 10702,
+        "proportion": 0.196862
+      },
+      {
+        "category": "h\u00edbrido",
+        "count": 902,
+        "proportion": 0.016592
+      },
+      {
+        "category": "remoto_sin_detalle",
+        "count": 784,
+        "proportion": 0.014422
+      },
+      {
+        "category": "remoto_global",
+        "count": 41,
+        "proportion": 0.000754
+      }
+    ]
+  },
+  "metadata": {
+    "dataset_fingerprint": "541f47bf1bb49a6a0e5947d49dade61c444e74cd5350cfbb68a185506cd957ed",
+    "dvc_yaml_hash": "642fe55786ad977f3bf0a1462384c90c5269b3f472adccbae36901d60c5d461b",
+    "git_commit": "b322e736b6ed6d82fc28b1200b48ed2d2acb783e",
+    "params_hash": "4fcad423dba9e77cbd69319a1eb461d74aead31f1198647e972665a863a52892",
+    "snapshot_count": 5
+  },
+  "model": {
+    "algorithm": "lightgbm",
+    "evaluation_rows": 8155,
+    "mae_average_usd": 27081.22,
+    "predicted_range_coverage": 0.113918,
+    "r2_salary_max": 0.628212,
+    "r2_salary_min": 0.572696,
+    "uncertainty_margin_usd": 50927.29,
+    "uncertainty_nominal_coverage": 0.8,
+    "uncertainty_test_coverage": 0.789332
+  },
+  "schema_version": "1.0"
+}

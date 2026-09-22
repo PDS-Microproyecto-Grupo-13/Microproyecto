@@ -285,6 +285,10 @@ qualification:
   max_temporal_gap: 10.0
   backtest_train_ratio: 0.80
   uncertainty_quantile: 0.80
+
+analytics:
+  salary_bins_usd: [0, 50000, 100000, 150000]
+  top_technologies_limit: 8
 """,
         encoding="utf-8",
     )
@@ -480,5 +484,19 @@ def test_reproducible_pipeline_collect_validate_and_preprocess(synthetic_foorill
     assert "git_commit" in manifest_data["lineage"]
     assert "dataset_fingerprint" in manifest_data
 
+    # 7. Generate deterministic Home analytics snapshot (no HTTP side effect)
+    from ml_pipeline.analytics import analytics
+
+    analytics_result = analytics(settings)
+    analytics_path = synthetic_foorilla_env / "artifacts/reports/dashboard_summary.json"
+
+    assert analytics_path.is_file()
+    assert analytics_result.schema_version == "1.0"
+    assert analytics_result.dataset.counts.modelable_rows == (
+        len(train_df) + len(val_part_df) + len(test_part_df)
+    )
+    assert analytics_result.model.evaluation_rows == len(test_part_df)
+    assert analytics_result.metadata.dataset_fingerprint == manifest_data["dataset_fingerprint"]
+    assert analytics_result.metadata.dvc_yaml_hash is None
 
 

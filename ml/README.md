@@ -8,7 +8,9 @@ Módulo central de Machine Learning para **SalaryPredict v1.0**. Implementa el c
 
 El módulo `ml/` cubre de forma autónoma:
 ```text
-Datos Crudos ──> Validación ──> Preprocesamiento ──> Calificación ──> Entrenamiento ──> Evaluación ──> Tracking ──> Registro de Candidato
+Datos Crudos ──> Validación ──> Preprocesamiento ──> Calificación ──> Entrenamiento ──> Evaluación ──> Analytics
+                                                                                                           └──> publicación explícita
+Evaluación ──> Tracking ──> Registro de Candidato
 ```
 
 - **Frontera de responsabilidad**: El flujo de este módulo **termina estrictamente en `register-candidate`**.
@@ -45,6 +47,9 @@ cp .env.example .env
 | `MLFLOW_EXPERIMENT_NAME` | `salary-prediction` | Experimento de seguimiento de corridas |
 | `MLFLOW_MODEL_NAME` | `salary_predict_model` | Nombre canónico del modelo en el Registry |
 | `ML_REQUIRE_CLEAN_GIT` | `false` | Exigir árbol Git limpio antes de registrar |
+| `ANALYTICS_PUBLISH_URL` | sin default operativo | Endpoint administrativo `POST /api/v1/analytics/snapshots` |
+| `ANALYTICS_PUBLISH_TOKEN` | sin default | Bearer token; obligatorio solo para `publish-analytics` y nunca versionado |
+| `ANALYTICS_PUBLISH_TIMEOUT_SECONDS` | `10` | Timeout HTTP de publicación |
 
 ---
 
@@ -71,10 +76,10 @@ cp .env.example .env
 
 ## 4. Pipeline Reproducible DVC
 
-El ciclo de preparación, modelado y evaluación está gobernado por DVC a través de 6 etapas deterministas:
+El ciclo de preparación, modelado, evaluación y resumen analítico está gobernado por DVC a través de 7 etapas deterministas:
 
 ```text
-collect ──> validate ──> preprocess ──> qualify ──> train ──> evaluate
+collect ──> validate ──> preprocess ──> qualify ──> train ──> evaluate ──> analytics
 ```
 
 Para reproducir el pipeline completo:
@@ -90,13 +95,32 @@ python -m ml_pipeline preprocess    # Split temporal 70/15/15 y límites de trai
 python -m ml_pipeline qualify       # Evaluación vs baseline Dummy y calibración de incertidumbre
 python -m ml_pipeline train         # Ajuste dual LightGBM sobre train+val (46,208 filas)
 python -m ml_pipeline evaluate      # Evaluación sobre test ciego (8,155 filas) y reportes
+python -m ml_pipeline analytics     # Genera dashboard_summary.json sin red ni MLflow
 ```
 
-> **Aviso**: `dvc repro` ejecuta **únicamente** estas 6 etapas reproducibles locales. No realiza operaciones con efectos remotos en MLflow.
+> **Aviso**: `dvc repro` ejecuta **únicamente** estas 7 etapas reproducibles locales. No realiza operaciones con efectos remotos en MLflow ni publica analytics por HTTP.
+
+### Home Analytics
+
+La etapa reproducible puede ejecutarse o reconstruirse de forma aislada:
+
+```bash
+dvc repro analytics
+```
+
+Produce `artifacts/reports/dashboard_summary.json` schema 1.0 a partir de artifacts locales y de la población modelable completa. Salarios, seniority, work mode y tecnologías describen las filas con `target_source == data.target_scope`. Las tecnologías son **menciones detectadas por el extractor canónico** `skill_*`, no una ontología exhaustiva ni feature importance.
+
+La publicación es una operación administrativa separada y fuera de DVC:
+
+```bash
+python -m ml_pipeline publish-analytics
+```
+
+El comando valida un artifact existente y lo envía al backend configurado. No calcula estadísticas, no ejecuta DVC y no consulta MLflow. No es necesario publicar después de cada `dvc repro`; un backend nuevo o vacío requiere una publicación inicial. Si el artifact ya existe, puede publicarse sin recalcular el pipeline.
 
 ---
 
-## 5. Operaciones de Tracking y Registry (Fuera de DVC)
+## 5. Operaciones externas (Fuera de DVC)
 
 Las etapas de logging y registro se ejecutan fuera de DVC porque interactúan con el servidor de MLflow y generan registros externos:
 
@@ -120,6 +144,17 @@ python -m ml_pipeline register-candidate
 - Genera el reporte local `artifacts/reports/registration.json`.
 
 > **Gobernanza**: `register-candidate` **no** asigna alias de producción (`champion`). La promoción corresponde a los operadores en `model_provider/`.
+
+### 3. Publicar Home Analytics
+
+```bash
+python -m ml_pipeline publish-analytics
+```
+
+- Lee y valida `artifacts/reports/dashboard_summary.json`.
+- Envía el JSON sin wrapper con bearer token.
+- Acepta respuestas `created`, `replaced` o `unchanged` del backend.
+- Las métricas `model` son métricas de evaluación asociadas al snapshot analítico; no prueban que el modelo evaluado sea el `champion` ni el modelo actualmente servido.
 
 ---
 

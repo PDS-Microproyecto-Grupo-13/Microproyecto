@@ -314,3 +314,86 @@ stages:
       hash: md5
       md5: 883bdcbac3dc810dce6cb66981765864
       size: 753
+  analytics:
+    cmd: python -m ml_pipeline analytics
+    deps:
+    - path: artifacts/reports/data_manifest.json
+      hash: md5
+      md5: 0b7d172fe1d30ea1af913602c984fbc0
+      size: 1258
+    - path: artifacts/reports/experiment_manifest.json
+      hash: md5
+      md5: 5c6a5d1ce52f04feb6088b5d290c4e15
+      size: 4302
+    - path: artifacts/reports/metrics.json
+      hash: md5
+      md5: 883bdcbac3dc810dce6cb66981765864
+      size: 753
+    - path: artifacts/reports/preprocess.json
+      hash: md5
+      md5: 60bf487e7344aaa88d8c906bf88aaf79
+      size: 1907
+    - path: artifacts/reports/validation.json
+      hash: md5
+      md5: 2d35fb9450b5f14b217c2b1727095bdc
+      size: 525
+    - path: data/processed/test.parquet
+      hash: md5
+      md5: 871d6c56e235f04d52da853c58d87d1e
+      size: 301958
+    - path: data/processed/train.parquet
+      hash: md5
+      md5: 574a131811d9a168326c5dbf8a6b648b
+      size: 1224727
+    - path: data/processed/validation.parquet
+      hash: md5
+      md5: 9758c8fb268b8a36fe2ce66d3945de2f
+      size: 298608
+    - path: src/ml_pipeline/analytics.py
+      hash: md5
+      md5: 9bd54706b1905c4e26de356d0c21bb25
+      size: 16252
+    - path: src/ml_pipeline/analytics_schema.py
+      hash: md5
+      md5: 25f0bf20beefc82cd76ea1e6291bfdbb
+      size: 8894
+    - path: src/ml_pipeline/cli.py
+      hash: md5
+      md5: 62452fc6a6309d93e8092ce01a12dc74
+      size: 1872
+    - path: src/ml_pipeline/common/io.py
+      hash: md5
+      md5: d0f68d48ea566c5dfddb57d93daa0745
+      size: 1012
+    - path: src/ml_pipeline/common/logging.py
+      hash: md5
+      md5: c398e5f05bb0a0460a855a3803470ec9
+      size: 180
+    - path: src/ml_pipeline/data/collect.py
+      hash: md5
+      md5: dbf9701130188277e993ecc4642c2320
+      size: 9637
+    - path: src/ml_pipeline/features.py
+      hash: md5
+      md5: bf30fe9e9db01fffa1bb652ed15cd73e
+      size: 5544
+    - path: src/ml_pipeline/settings.py
+      hash: md5
+      md5: 8bb4eded12e87b8ce10f6a5aa5da7cf6
+      size: 2122
+    params:
+      params.yaml:
+        analytics:
+          salary_bins_usd:
+          - 0
+          - 50000
+          - 100000
+          - 150000
+          - 200000
+          - 250000
+          top_technologies_limit: 8
+    outs:
+    - path: artifacts/reports/dashboard_summary.json
+      hash: md5
+      md5: 6b3450e81ae22febaf4aab49711d7e44
+      size: 4114

@@ -103,5 +103,28 @@ stages:
       - artifacts/reports/metrics.json:
           cache: false
 
-
+  analytics:
+    cmd: python -m ml_pipeline analytics
+    deps:
+      - artifacts/reports/data_manifest.json
+      - artifacts/reports/experiment_manifest.json
+      - artifacts/reports/metrics.json
+      - artifacts/reports/preprocess.json
+      - artifacts/reports/validation.json
+      - data/processed/test.parquet
+      - data/processed/train.parquet
+      - data/processed/validation.parquet
+      - src/ml_pipeline/analytics.py
+      - src/ml_pipeline/analytics_schema.py
+      - src/ml_pipeline/cli.py
+      - src/ml_pipeline/common/io.py
+      - src/ml_pipeline/common/logging.py
+      - src/ml_pipeline/data/collect.py
+      - src/ml_pipeline/features.py
+      - src/ml_pipeline/settings.py
+    params:
+      - analytics
+    outs:
+      - artifacts/reports/dashboard_summary.json:
+          cache: false
 

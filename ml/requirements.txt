@@ -9,3 +9,5 @@ mlflow>=3.0,<4
 pytest>=8,<9
 pyarrow>=25,<26
 lightgbm>=4.0,<5
+httpx>=0.28,<0.29
+pydantic>=2.13,<3

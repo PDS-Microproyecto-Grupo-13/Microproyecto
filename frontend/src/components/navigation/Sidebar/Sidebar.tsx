@@ -2,8 +2,8 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   Calculator,
-  BarChart3,
-  ArrowLeftRight,
+  // BarChart3,
+  // ArrowLeftRight,
   Info,
   Sparkles,
   type LucideIcon,
@@ -27,16 +27,16 @@ const navigationItems: NavigationItem[] = [
     path: "/prediction",
     icon: Calculator,
   },
-  {
-    label: "Explorar Datos",
-    path: "/explore",
-    icon: BarChart3,
-  },
-  {
-    label: "Comparaciones",
-    path: "/comparisons",
-    icon: ArrowLeftRight,
-  },
+  // {
+  //   label: "Explorar Datos",
+  //   path: "/explore",
+  //   icon: BarChart3,
+  // },
+  // {
+  //   label: "Comparaciones",
+  //   path: "/comparisons",
+  //   icon: ArrowLeftRight,
+  // },
   {
     label: "Acerca del Proyecto",
     path: "/about",
