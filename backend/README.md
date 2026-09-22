@@ -59,6 +59,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 * **Predicción salarial:** `POST http://localhost:8000/api/v1/predictions`
 * **Selector del modelo:** `GET http://localhost:8000/api/v1/predictions/model`
 * **Estado del runtime:** `GET http://localhost:8000/api/v1/predictions/status`
+* **Publicar Home Analytics:** `POST http://localhost:8000/api/v1/analytics/snapshots`
+* **Consultar Home Analytics:** `GET http://localhost:8000/api/v1/analytics/summary`
 
 ### Ejemplo de respuesta de Healthcheck
 
@@ -120,6 +122,34 @@ docker run --rm -p 8000:8000 --env-file .env mlops-backend
 ---
 
 ## 7. Arquitectura, Contratos y Fronteras
+
+### Home Analytics
+
+El backend acepta el contrato estricto `AnalyticsSummary` schema `1.0` mediante
+`POST /api/v1/analytics/snapshots`, protegido por
+`Authorization: Bearer <ANALYTICS_PUBLISH_TOKEN>`. La última publicación se
+guarda de forma atómica en `ANALYTICS_STORAGE_PATH` (por defecto,
+`/app/data/analytics_summary.json`) y Docker Compose respalda `/app/data` con un
+volumen propio del backend.
+
+`GET /api/v1/analytics/summary` es público y read-only. Antes de la primera
+publicación devuelve `404 analytics_not_published`; después devuelve exactamente
+el summary persistido. Todas sus respuestas usan `Cache-Control: no-store`.
+
+Bootstrap operativo, con el artifact de ML ya existente:
+
+```bash
+cd ../ml
+ANALYTICS_PUBLISH_URL=http://localhost:8000/api/v1/analytics/snapshots \
+ANALYTICS_PUBLISH_TOKEN='<mismo-token-del-backend>' \
+python -m ml_pipeline publish-analytics
+```
+
+Publicar es una operación explícita e independiente de DVC. El backend no lee
+artifacts ni datasets de `ml/`, no ejecuta DVC, no recalcula estadísticas y no
+consulta MLflow para esta funcionalidad. Las métricas bajo `model` describen la
+evaluación asociada al snapshot analítico; no identifican necesariamente al
+modelo `champion` servido.
 
 ### Interacción con el Servicio de Inferencia
 

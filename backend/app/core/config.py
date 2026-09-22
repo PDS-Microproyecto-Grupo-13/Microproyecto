@@ -1,7 +1,8 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +34,10 @@ class Settings(BaseSettings):
     INFERENCE_TIMEOUT_SECONDS: float = 10.0
     MODEL_NAME: str = "salary_predict_model"
     MODEL_ALIAS: str = "champion"
+
+    # Home Analytics publication and backend-owned persistence
+    ANALYTICS_PUBLISH_TOKEN: SecretStr | None = None
+    ANALYTICS_STORAGE_PATH: Path = Path("/app/data/analytics_summary.json")
 
     # CORS Settings
     CORS_ORIGINS: list[str] | str = ["http://localhost:5173"]

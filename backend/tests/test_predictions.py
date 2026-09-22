@@ -17,7 +17,11 @@ class StubInferenceClient:
 @pytest.mark.asyncio
 async def test_prediction_endpoint(client) -> None:
     app = client._transport.app
-    app.dependency_overrides[get_inference_client] = lambda: StubInferenceClient()
+
+    async def override_inference_client() -> StubInferenceClient:
+        return StubInferenceClient()
+
+    app.dependency_overrides[get_inference_client] = override_inference_client
     try:
         response = await client.post(
             "/api/v1/predictions",
@@ -73,6 +77,7 @@ EXPECTED_PYFUNC_COLUMNS = {
 
 def test_to_mlflow_record_minimal_request_produces_11_columns():
     from datetime import datetime
+
     from app.schemas.prediction import SalaryPredictionRequest
 
     req = SalaryPredictionRequest(
@@ -178,7 +183,11 @@ async def test_prediction_endpoint_includes_runtime_version(client) -> None:
             }
 
     app = client._transport.app
-    app.dependency_overrides[get_inference_client] = lambda: VersionedInferenceClient()
+
+    async def override_inference_client() -> VersionedInferenceClient:
+        return VersionedInferenceClient()
+
+    app.dependency_overrides[get_inference_client] = override_inference_client
     try:
         response = await client.post(
             "/api/v1/predictions",
@@ -209,5 +218,3 @@ async def test_prediction_endpoint_includes_runtime_version(client) -> None:
         assert status_body["runtime_inference"]["loaded_version"] == "1"
     finally:
         app.dependency_overrides.pop(get_inference_client, None)
-
-

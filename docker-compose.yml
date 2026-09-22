@@ -85,7 +85,11 @@ services:
       - INFERENCE_TIMEOUT_SECONDS=10.0
       - MODEL_NAME=${MODEL_NAME:-salary_predict_model}
       - MODEL_ALIAS=${MODEL_ALIAS:-champion}
+      - ANALYTICS_PUBLISH_TOKEN=${ANALYTICS_PUBLISH_TOKEN:-}
+      - ANALYTICS_STORAGE_PATH=${ANALYTICS_STORAGE_PATH:-/app/data/analytics_summary.json}
       - CORS_ORIGINS=http://localhost:5173,http://localhost:80,http://localhost
+    volumes:
+      - backend-analytics-data:/app/data
     depends_on:
       inference:
         condition: service_healthy
@@ -116,13 +120,15 @@ services:
       - mlops-net
 
 # ==============================================================================
-# Persistent Volumes (SQLite metadata store & Model artifacts)
+# Persistent Volumes (MLflow state, model artifacts & backend analytics)
 # ==============================================================================
 volumes:
   mlflow-db-data:
     name: mlops-mlflow-db-data
   mlflow-artifact-data:
     name: mlops-mlflow-artifact-data
+  backend-analytics-data:
+    name: mlops-backend-analytics-data
 
 # ==============================================================================
 # Internal Bridge Network

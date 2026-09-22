@@ -2,6 +2,7 @@ import logging
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -20,12 +21,14 @@ class ApplicationError(Exception):
         status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
         error_code: str = "application_error",
         details: dict[str, Any] | list[Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         super().__init__(message)
         self.message = message
         self.status_code = status_code
         self.error_code = error_code
         self.details = details or {}
+        self.headers = headers or {}
 
 
 class ExternalServiceError(ApplicationError):
@@ -99,7 +102,7 @@ async def application_error_handler(request: Request, exc: ApplicationError) -> 
         request_id=request_id,
         details=exc.details if exc.details else None,
     ).model_dump(exclude_none=True)
-    return JSONResponse(status_code=exc.status_code, content=content)
+    return JSONResponse(status_code=exc.status_code, content=content, headers=exc.headers)
 
 
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
@@ -127,11 +130,12 @@ async def validation_exception_handler(
 ) -> JSONResponse:
     """Handler for schema validation errors."""
     request_id = get_request_id()
+    validation_errors = jsonable_encoder(exc.errors())
     logger.warning(
         "validation_error",
         extra={
             "request_id": request_id,
-            "errors": exc.errors(),
+            "errors": validation_errors,
             "path": request.url.path,
         },
     )
@@ -139,7 +143,7 @@ async def validation_exception_handler(
         error="validation_error",
         message="Request payload validation failed",
         request_id=request_id,
-        details=exc.errors(),
+        details=validation_errors,
     ).model_dump(exclude_none=True)
     return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, content=content)
 
