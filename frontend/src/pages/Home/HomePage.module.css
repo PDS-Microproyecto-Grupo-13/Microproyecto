@@ -26,13 +26,15 @@
 .metricContent {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .metricValue {
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: var(--color-text-primary);
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .metricLabel {
@@ -40,11 +42,12 @@
   color: var(--color-text-secondary);
 }
 
-.metricTrend {
-  font-size: 0.75rem;
-  color: var(--color-success);
+.metricDetail {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
   font-weight: 600;
-  margin-top: 2px;
+  margin-top: 3px;
+  line-height: 1.35;
 }
 
 .mainGrid {
@@ -54,57 +57,59 @@
   margin-bottom: var(--space-xl);
 }
 
-@media (max-width: 1024px) {
-  .mainGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
 .bottomGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-xl);
 }
 
-@media (max-width: 900px) {
-  .bottomGrid {
-    grid-template-columns: 1fr;
-  }
+.salaryChart {
+  height: 260px;
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-sm);
+  padding-top: var(--space-sm);
+  overflow-x: auto;
 }
 
-/* Placeholder elements */
-.chartPlaceholder {
-  height: 240px;
-  background: linear-gradient(180deg, var(--color-surface-muted) 0%, #ffffff 100%);
-  border: 2px dashed var(--color-border);
-  border-radius: var(--radius-md);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  color: var(--color-text-secondary);
-  font-size: 0.9rem;
-  padding: var(--space-lg);
+.salaryBarColumn {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 22px 1fr 42px;
+  gap: var(--space-xs);
   text-align: center;
 }
 
-.chartBarsVisual {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-md);
-  height: 120px;
-  width: 100%;
-  max-width: 400px;
-  padding: 0 var(--space-md);
+.salaryBarCount {
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
-.bar {
-  flex: 1;
-  background-color: var(--color-primary-light);
-  border-top: 3px solid var(--color-primary);
+.salaryBarTrack {
+  display: flex;
+  align-items: flex-end;
+  min-height: 140px;
+  background: linear-gradient(180deg, transparent, var(--color-surface-muted));
+  border-bottom: 1px solid var(--color-border);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  overflow: hidden;
+}
+
+.salaryBar {
+  width: 100%;
+  background: linear-gradient(180deg, var(--color-primary), var(--color-primary-light));
+  border-top: 3px solid var(--color-primary-dark);
   border-radius: 4px 4px 0 0;
   transition: height var(--transition-fast);
+}
+
+.salaryBarLabel {
+  color: var(--color-text-secondary);
+  font-size: 0.65rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .quickActionsList {
@@ -140,52 +145,149 @@
 }
 
 .techTag {
-  display: inline-flex;
+  display: inline-grid;
+  grid-template-columns: auto auto;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: 2px 6px;
+  padding: 7px 12px;
   background-color: var(--color-surface-muted);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-lg);
   font-size: 0.82rem;
-  font-weight: 500;
-  color: var(--color-text-secondary);
+  font-weight: 600;
+  color: var(--color-text-primary);
 }
 
 .techCount {
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   background-color: var(--color-primary-light);
   color: var(--color-primary);
   padding: 1px 6px;
   border-radius: var(--radius-full);
 }
 
-.tablePlaceholder {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
+.techProportion {
+  grid-column: 1 / -1;
+  color: var(--color-text-secondary);
+  font-size: 0.68rem;
+  font-weight: 500;
 }
 
-.tableRow {
+.distributionList {
+  display: flex;
+  flex-direction: column;
+}
+
+.distributionRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-sm) var(--space-md);
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-xs);
   border-bottom: 1px solid var(--color-border-light);
-  font-size: 0.88rem;
 }
 
-.tableRow:last-child {
-  border-bottom: none;
+.distributionRow:last-child {
+  border-bottom: 0;
 }
 
-.roleTitle {
-  font-weight: 600;
+.distributionLabel {
   color: var(--color-text-primary);
+  font-size: 0.88rem;
+  font-weight: 600;
 }
 
-.roleSalary {
-  font-weight: 600;
+.distributionValue {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+}
+
+.distributionValue strong {
   color: var(--color-primary-dark);
+  font-size: 0.9rem;
+}
+
+.distributionValue span {
+  min-width: 42px;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  text-align: right;
+}
+
+.statePanel {
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-xl);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.statePanel h2 {
+  color: var(--color-text-primary);
+  font-size: 1.15rem;
+}
+
+.statePanel p {
+  max-width: 520px;
+  line-height: 1.5;
+}
+
+.stateIcon {
+  color: var(--color-primary);
+}
+
+.retryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+  padding: 9px 14px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary);
+  color: #fff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.retryButton:hover {
+  background-color: var(--color-primary-dark);
+}
+
+.spinner {
+  color: var(--color-primary);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1024px) {
+  .mainGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+  .bottomGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px) {
+  .salaryChart {
+    gap: 6px;
+  }
+
+  .salaryBarColumn {
+    min-width: 74px;
+  }
 }

@@ -23,7 +23,7 @@ frontend/
 │   ├── components/      # Componentes UI reutilizables y navegación
 │   ├── layouts/         # Layout general con Topbar y Sidebar
 │   ├── pages/           # Vistas (Home, SalaryPrediction, ExploreData, Comparisons, About)
-│   ├── services/        # Cliente HTTP de la API (salaryApi.ts)
+│   ├── services/        # Clientes HTTP tipados para predicción y analytics
 │   └── styles/          # Estilos globales y Tailwind CSS
 ├── Dockerfile           # Multi-stage build (Node 22 -> Nginx alpine)
 ├── nginx.conf           # Configuración del reverse proxy para producción
@@ -79,7 +79,13 @@ Navegador / SPA  ──>  Backend (:8000)  ──>  Inference (:5001 / :5002)
 
 ## 6. Variables y Configuración
 
-El frontend **no requiere archivo `.env`**. Todas las solicitudes hacia el backend se realizan mediante rutas relativas `/api/v1/predictions`. La resolución del host y puerto es gestionada íntegramente por el proxy correspondiente (Vite o Nginx).
+El frontend **no requiere archivo `.env`**. Todas las solicitudes hacia el backend se realizan mediante rutas relativas. La resolución del host y puerto es gestionada íntegramente por el proxy correspondiente (Vite o Nginx).
+
+Home consulta exclusivamente `GET /api/v1/analytics/summary`. Mientras espera
+muestra loading; un `404 analytics_not_published` produce el estado explícito
+"Analítica aún no publicada"; errores temporales o de red muestran una opción de
+reintento. No existen métricas mock ni persistencia/cache del snapshot en el
+navegador.
 
 ---
 

@@ -1,37 +1,171 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  ArrowRight,
+  BarChart3,
+  Code2,
   Database,
   DollarSign,
-  Briefcase,
+  LoaderCircle,
+  RefreshCw,
   Sparkles,
-  BarChart3,
-  ArrowRight,
-  TrendingUp,
+  TriangleAlert,
 } from "lucide-react";
-import { PageHeader } from "../../components/ui/PageHeader/PageHeader";
 import { Card } from "../../components/ui/Card/Card";
+import { PageHeader } from "../../components/ui/PageHeader/PageHeader";
+import {
+  getAnalyticsSummary,
+  type AnalyticsSummary,
+  type CategoryCount,
+  type SalaryBin,
+} from "../../services/analyticsApi";
+import { ApiError } from "../../services/http";
 import styles from "./HomePage.module.css";
 
-export function HomePage() {
-  return (
-    <div>
-      <PageHeader
-        title="Dashboard General"
-        subtitle="Monitoreo del mercado tecnológico y predicciones salariales basadas en Machine Learning"
-        badge="ML Model v1.0"
-      />
+type AnalyticsState =
+  | { status: "loading" }
+  | { status: "success"; summary: AnalyticsSummary }
+  | { status: "unpublished" }
+  | { status: "error"; message: string };
 
-      {/* Metrics Row */}
-      <section className={styles.metricsGrid} aria-label="Métricas Principales">
+const integerFormatter = new Intl.NumberFormat("es-CO", {
+  maximumFractionDigits: 0,
+});
+const currencyFormatter = new Intl.NumberFormat("es-CO", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+const percentFormatter = new Intl.NumberFormat("es-CO", {
+  style: "percent",
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+const dateFormatter = new Intl.DateTimeFormat("es-CO", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+const seniorityLabels: Record<string, string> = {
+  SE: "Senior",
+  MI: "Mid",
+  EN: "Entry",
+  EX: "Executive",
+  desconocido: "Desconocido",
+};
+
+const technologyLabels: Record<string, string> = {
+  aws: "AWS",
+  azure: "Azure",
+  docker: "Docker",
+  gcp: "GCP",
+  kubernetes: "Kubernetes",
+  machine_learning: "Machine Learning",
+  power_bi: "Power BI",
+  python: "Python",
+  pytorch: "PyTorch",
+  spark: "Spark",
+  sql: "SQL",
+  tableau: "Tableau",
+  tensorflow: "TensorFlow",
+};
+
+function isAbortError(cause: unknown): boolean {
+  return cause instanceof DOMException && cause.name === "AbortError";
+}
+
+function analyticsErrorMessage(cause: unknown): string {
+  if (
+    cause instanceof ApiError &&
+    cause.status === 503 &&
+    cause.code === "analytics_storage_unavailable"
+  ) {
+    return "La analítica no está disponible temporalmente. Intenta nuevamente en unos minutos.";
+  }
+  if (cause instanceof ApiError) return cause.message;
+  return "No fue posible conectar con el backend de analítica.";
+}
+
+function salaryBinLabel(bin: SalaryBin): string {
+  if (bin.upper_bound_usd === null) {
+    return `${currencyFormatter.format(bin.lower_bound_usd)} o más`;
+  }
+  return `${currencyFormatter.format(bin.lower_bound_usd)} – ${currencyFormatter.format(
+    bin.upper_bound_usd,
+  )}`;
+}
+
+function categoryLabel(item: CategoryCount): string {
+  return seniorityLabels[item.category] ?? item.category;
+}
+
+function LoadingState() {
+  return (
+    <section className={styles.statePanel} aria-live="polite" aria-busy="true">
+      <LoaderCircle className={styles.spinner} size={30} />
+      <h2>Cargando analítica</h2>
+      <p>Consultando el resumen publicado por el backend.</p>
+    </section>
+  );
+}
+
+interface RetryStateProps {
+  kind: "unpublished" | "error";
+  message: string;
+  onRetry: () => void;
+}
+
+function RetryState({ kind, message, onRetry }: RetryStateProps) {
+  const Icon = kind === "unpublished" ? Database : TriangleAlert;
+  return (
+    <section
+      className={styles.statePanel}
+      role={kind === "error" ? "alert" : "status"}
+    >
+      <Icon className={styles.stateIcon} size={32} />
+      <h2>
+        {kind === "unpublished"
+          ? "Analítica aún no publicada"
+          : "Analítica no disponible"}
+      </h2>
+      <p>{message}</p>
+      <button className={styles.retryButton} type="button" onClick={onRetry}>
+        <RefreshCw size={16} />
+        Reintentar
+      </button>
+    </section>
+  );
+}
+
+function AnalyticsDashboard({ summary }: { summary: AnalyticsSummary }) {
+  const { dataset, metadata, model } = summary;
+  const maxSalaryBinCount = Math.max(
+    ...dataset.salary_midpoint_distribution.map((bin) => bin.count),
+    1,
+  );
+  const period = `${dateFormatter.format(
+    new Date(dataset.data_range.published_min),
+  )} – ${dateFormatter.format(new Date(dataset.data_range.published_max))}`;
+
+  return (
+    <>
+      <section className={styles.metricsGrid} aria-label="Métricas principales">
         <Card>
           <div className={styles.metricCard}>
             <div className={styles.metricIconWrapper}>
               <Database size={24} />
             </div>
             <div className={styles.metricContent}>
-              <span className={styles.metricValue}>1,450+</span>
-              <span className={styles.metricLabel}>Ofertas Ingeridas</span>
-              <span className={styles.metricTrend}>+12.5% este mes</span>
+              <span className={styles.metricValue}>
+                {integerFormatter.format(dataset.counts.modelable_rows)}
+              </span>
+              <span className={styles.metricLabel}>Vacantes modelables</span>
+              <span className={styles.metricDetail}>
+                {integerFormatter.format(dataset.counts.validated_rows)} validadas
+                {" · "}{metadata.snapshot_count} snapshots
+              </span>
             </div>
           </div>
         </Card>
@@ -42,9 +176,15 @@ export function HomePage() {
               <DollarSign size={24} />
             </div>
             <div className={styles.metricContent}>
-              <span className={styles.metricValue}>$52,800</span>
-              <span className={styles.metricLabel}>Salario Medio Anual</span>
-              <span className={styles.metricTrend}>USD mercado tech</span>
+              <span className={styles.metricValue}>
+                {currencyFormatter.format(dataset.salary_midpoint.median_usd)}
+              </span>
+              <span className={styles.metricLabel}>
+                Punto medio mediano anual
+              </span>
+              <span className={styles.metricDetail}>
+                Media {currencyFormatter.format(dataset.salary_midpoint.mean_usd)} / año
+              </span>
             </div>
           </div>
         </Card>
@@ -52,12 +192,16 @@ export function HomePage() {
         <Card>
           <div className={styles.metricCard}>
             <div className={styles.metricIconWrapper}>
-              <Briefcase size={24} />
+              <BarChart3 size={24} />
             </div>
             <div className={styles.metricContent}>
-              <span className={styles.metricValue}>18</span>
-              <span className={styles.metricLabel}>Roles Clasificados</span>
-              <span className={styles.metricTrend}>Data, Dev & DevOps</span>
+              <span className={styles.metricValue}>
+                {currencyFormatter.format(model.mae_average_usd)}
+              </span>
+              <span className={styles.metricLabel}>MAE promedio test</span>
+              <span className={styles.metricDetail}>
+                {integerFormatter.format(model.evaluation_rows)} filas de evaluación
+              </span>
             </div>
           </div>
         </Card>
@@ -68,37 +212,56 @@ export function HomePage() {
               <Sparkles size={24} />
             </div>
             <div className={styles.metricContent}>
-              <span className={styles.metricValue}>94.2%</span>
-              <span className={styles.metricLabel}>R² Score Modelo</span>
-              <span className={styles.metricTrend}>Gradient Boosting</span>
+              <span className={styles.metricValue}>
+                {percentFormatter.format(model.r2_salary_min)} –{" "}
+                {percentFormatter.format(model.r2_salary_max)}
+              </span>
+              <span className={styles.metricLabel}>R² evaluación</span>
+              <span className={styles.metricDetail}>
+                {model.algorithm} · evaluación del snapshot
+              </span>
             </div>
           </div>
         </Card>
       </section>
 
-      {/* Main Grid: Charts & Quick Actions */}
       <section className={styles.mainGrid}>
         <Card
-          title="Distribución Salarial por Rango (Placeholder)"
-          subtitle="Densidad y distribución estadística calculada sobre el dataset ingerido"
+          title="Distribución del punto medio salarial"
+          subtitle="Vacantes modelables por rango anual USD"
           action={<BarChart3 size={18} color="var(--color-primary)" />}
         >
-          <div className={styles.chartPlaceholder}>
-            <div className={styles.chartBarsVisual}>
-              <div className={styles.bar} style={{ height: "40%" }} />
-              <div className={styles.bar} style={{ height: "65%" }} />
-              <div className={styles.bar} style={{ height: "90%" }} />
-              <div className={styles.bar} style={{ height: "75%" }} />
-              <div className={styles.bar} style={{ height: "50%" }} />
-              <div className={styles.bar} style={{ height: "30%" }} />
-            </div>
-            <span>[ Visualización interactiva de distribución salarial ]</span>
+          <div className={styles.salaryChart} aria-label="Histograma salarial">
+            {dataset.salary_midpoint_distribution.map((bin) => (
+              <div className={styles.salaryBarColumn} key={bin.lower_bound_usd}>
+                <span className={styles.salaryBarCount}>
+                  {integerFormatter.format(bin.count)}
+                </span>
+                <div className={styles.salaryBarTrack}>
+                  <div
+                    className={styles.salaryBar}
+                    style={{
+                      height: `${Math.max(
+                        (bin.count / maxSalaryBinCount) * 100,
+                        2,
+                      )}%`,
+                    }}
+                    title={`${salaryBinLabel(bin)}: ${integerFormatter.format(
+                      bin.count,
+                    )} vacantes (${percentFormatter.format(bin.proportion)})`}
+                  />
+                </div>
+                <span className={styles.salaryBarLabel}>
+                  {salaryBinLabel(bin)}
+                </span>
+              </div>
+            ))}
           </div>
         </Card>
 
         <Card
-          title="Acciones Rápidas"
-          subtitle="Accesos directos del pipeline"
+          title="Acciones rápidas"
+          subtitle="Accesos a las herramientas del producto"
         >
           <div className={styles.quickActionsList}>
             <Link to="/prediction" className={styles.actionItem}>
@@ -106,69 +269,127 @@ export function HomePage() {
               <ArrowRight size={16} />
             </Link>
             <Link to="/explore" className={styles.actionItem}>
-              <span>Explorar dataset completo</span>
+              <span>Explorar datos</span>
               <ArrowRight size={16} />
             </Link>
             <Link to="/comparisons" className={styles.actionItem}>
-              <span>Comparar roles y seniorities</span>
+              <span>Comparar seniorities</span>
               <ArrowRight size={16} />
             </Link>
             <Link to="/about" className={styles.actionItem}>
-              <span>Ver arquitectura MLOps</span>
+              <span>Ver arquitectura del proyecto</span>
               <ArrowRight size={16} />
             </Link>
           </div>
         </Card>
       </section>
 
-      {/* Bottom Grid: Demand & Recent Samples */}
       <section className={styles.bottomGrid}>
         <Card
-          title="Habilidades y Tecnologías Destacadas"
-          subtitle="Frecuencia en ofertas con mejor remuneración"
-          action={<TrendingUp size={18} color="var(--color-success)" />}
+          title="Tecnologías más frecuentes"
+          subtitle="Menciones detectadas en vacantes modelables"
+          action={<Code2 size={18} color="var(--color-success)" />}
         >
           <div className={styles.techTagList}>
-            <span className={styles.techTag}>Python <span className={styles.techCount}>420</span></span>
-            <span className={styles.techTag}>React <span className={styles.techCount}>380</span></span>
-            <span className={styles.techTag}>AWS <span className={styles.techCount}>310</span></span>
-            <span className={styles.techTag}>Docker <span className={styles.techCount}>290</span></span>
-            <span className={styles.techTag}>SQL <span className={styles.techCount}>270</span></span>
-            <span className={styles.techTag}>TypeScript <span className={styles.techCount}>240</span></span>
-            <span className={styles.techTag}>Kubernetes <span className={styles.techCount}>180</span></span>
-            <span className={styles.techTag}>PyTorch / ML <span className={styles.techCount}>150</span></span>
+            {dataset.top_technologies.map((technology) => (
+              <span className={styles.techTag} key={technology.technology}>
+                {technologyLabels[technology.technology] ?? technology.technology}
+                <span className={styles.techCount}>
+                  {integerFormatter.format(technology.count)}
+                </span>
+                <span className={styles.techProportion}>
+                  {percentFormatter.format(technology.proportion)}
+                </span>
+              </span>
+            ))}
           </div>
         </Card>
 
         <Card
-          title="Muestra de Registros Procesados"
-          subtitle="Últimos registros estandarizados por el pipeline de ingesta"
+          title="Distribución por seniority"
+          subtitle={`Vacantes publicadas: ${period}`}
         >
-          <div className={styles.tablePlaceholder}>
-            <div className={styles.tableRow}>
-              <div>
-                <span className={styles.roleTitle}>Senior MLOps Engineer</span>
-                <p style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>Remoto • LATAM / USA</p>
+          <div className={styles.distributionList}>
+            {dataset.seniority_distribution.map((item) => (
+              <div className={styles.distributionRow} key={item.category}>
+                <span className={styles.distributionLabel}>
+                  {categoryLabel(item)}
+                </span>
+                <div className={styles.distributionValue}>
+                  <strong>{integerFormatter.format(item.count)}</strong>
+                  <span>{percentFormatter.format(item.proportion)}</span>
+                </div>
               </div>
-              <span className={styles.roleSalary}>$75,000 - $95,000</span>
-            </div>
-            <div className={styles.tableRow}>
-              <div>
-                <span className={styles.roleTitle}>Full Stack Developer</span>
-                <p style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>Híbrido • React & Node</p>
-              </div>
-              <span className={styles.roleSalary}>$45,000 - $60,000</span>
-            </div>
-            <div className={styles.tableRow}>
-              <div>
-                <span className={styles.roleTitle}>Data Scientist</span>
-                <p style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>Remoto • Python & NLP</p>
-              </div>
-              <span className={styles.roleSalary}>$55,000 - $70,000</span>
-            </div>
+            ))}
           </div>
         </Card>
       </section>
+    </>
+  );
+}
+
+export function HomePage() {
+  const [state, setState] = useState<AnalyticsState>({ status: "loading" });
+  const [requestVersion, setRequestVersion] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+
+    getAnalyticsSummary({ signal: controller.signal })
+      .then((summary) => {
+        if (active) setState({ status: "success", summary });
+      })
+      .catch((cause: unknown) => {
+        if (!active || isAbortError(cause)) return;
+        if (
+          cause instanceof ApiError &&
+          cause.status === 404 &&
+          cause.code === "analytics_not_published"
+        ) {
+          setState({ status: "unpublished" });
+          return;
+        }
+        setState({ status: "error", message: analyticsErrorMessage(cause) });
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [requestVersion]);
+
+  const retry = () => {
+    setState({ status: "loading" });
+    setRequestVersion((current) => current + 1);
+  };
+
+  return (
+    <div>
+      <PageHeader
+        title="Dashboard General"
+        subtitle="Analítica agregada del mercado tecnológico y evaluación del snapshot"
+        badge={
+          state.status === "success"
+            ? `Analytics v${state.summary.schema_version}`
+            : "Analytics"
+        }
+      />
+
+      {state.status === "loading" && <LoadingState />}
+      {state.status === "unpublished" && (
+        <RetryState
+          kind="unpublished"
+          message="El backend está listo, pero todavía no recibió un snapshot analítico."
+          onRetry={retry}
+        />
+      )}
+      {state.status === "error" && (
+        <RetryState kind="error" message={state.message} onRetry={retry} />
+      )}
+      {state.status === "success" && (
+        <AnalyticsDashboard summary={state.summary} />
+      )}
     </div>
   );
 }
